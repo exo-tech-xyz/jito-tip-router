@@ -71,6 +71,7 @@ use {
     log::error,
     anchor_lang::prelude::*,
     std::result::Result,
+    ellipsis_client::EllipsisClient,
 };
 
 #[derive(Clone, Deserialize, Serialize, Debug)]
@@ -145,7 +146,7 @@ fn emit_inconsistent_tree_node_amount_dp(
 impl GeneratedMerkleTreeCollection {
     pub async fn new_from_stake_meta_collection(
         stake_meta_coll: StakeMetaCollection,
-        banks_client: &mut Bank,
+        banks_client:  &EllipsisClient,
     ) -> Result<GeneratedMerkleTreeCollection, MerkleRootGeneratorError> {
         let (config_pda, _) = Pubkey::find_program_address(
             &[CONFIG_ACCOUNT_SEED],
@@ -153,17 +154,14 @@ impl GeneratedMerkleTreeCollection {
         );
     
         // Fix account retrieval
-        let config_account = match banks_client.get_account(&config_pda) {
-            Some(account) => account,
-            None => return Err(MerkleRootGeneratorError::AccountNotFound),
-        };
+        let config_account = banks_client.get_account(&config_pda)
+            .await
+            .map_err(|_| MerkleRootGeneratorError::AccountNotFound)?;
             
-        let config = if let Some(config_account) = banks_client.get_account(&config_pda) {
-            TipAccountConfig::deserialize(&mut config_account.data())
-                .map_err(|_| MerkleRootGeneratorError::DeserializationError)?
-        } else {
-            return Err(MerkleRootGeneratorError::AccountNotFound);
-        };
+    let config = TipAccountConfig::deserialize(&mut config_account.data())
+        .map_err(|_| MerkleRootGeneratorError::DeserializationError)?;
+
+
 
         let protocol_fee_bps = config.protocol_fee_bps;
     

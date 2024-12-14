@@ -31,7 +31,7 @@ use {
     },
     jito_tip_distribution::{ self, ID as TIP_DISTRIBUTION_ID },
     jito_tip_payment::{ self, ID as TIP_PAYMENT_ID },
-    // ellipsis_client::EllipsisClient,
+    ellipsis_client::EllipsisClient,
     solana_client::rpc_client::RpcClient,
     solana_sdk::genesis_config::GenesisConfig,
     self::snapshot_creator::MockSnapshotCreator,
@@ -39,6 +39,7 @@ use {
     thiserror::Error,
     solana_sdk::account::{Account, AccountSharedData},
     jito_tip_distribution::state::Config,
+    solana_rpc_client::BanksClient
 };
 
 
@@ -272,10 +273,16 @@ async fn test_merkle_tree_generation() -> Result<(), MerkleTreeTestError> {
     let validator_fee_amount = (TOTAL_TIPS as u128 * VALIDATOR_FEE_BPS as u128 / 10000u128) as u64;
     let remaining_tips = TOTAL_TIPS - protocol_fee_amount - validator_fee_amount;
 
+    let ellipsis_client = EllipsisClient::from_banks(
+        &test_context.context.banks_client,
+        &test_context.payer,
+    ).await.map_err(|e| MerkleTreeTestError::Other(Box::new(e)))?;
+    
+    // Then use it in generate_merkle_root
     let merkle_tree_coll = merkle_root_generator_workflow::generate_merkle_root(
         stake_meta_collection.clone(),
-        &test_context.context.banks_client,
-    ).await.map_err(|e| MerkleTreeTestError::Other(Box::new(e)))?;
+        &ellipsis_client,
+    ).await?;
 
     let generated_tree = &merkle_tree_coll.generated_merkle_trees[0];
     let nodes = &generated_tree.tree_nodes;

@@ -4,7 +4,7 @@ use {
     solana_client::rpc_client::RpcClient,
     std::{ fmt::Debug, fs::File, io::{ BufWriter, Write }, path::PathBuf },
     thiserror::Error,
-    solana_runtime::bank::Bank,
+    ellipsis_client::EllipsisClient,
 };
 
 #[derive(Error, Debug)]
@@ -23,7 +23,7 @@ pub enum MerkleRootGeneratorError {
 
 pub async fn generate_merkle_root(
     stake_meta_coll: StakeMetaCollection,
-    bank: &mut Bank,
+    bank: &EllipsisClient,
 ) -> Result<GeneratedMerkleTreeCollection, MerkleRootGeneratorError> {
     let merkle_tree_coll = GeneratedMerkleTreeCollection::new_from_stake_meta_collection(
         stake_meta_coll,
