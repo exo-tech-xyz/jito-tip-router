@@ -255,13 +255,12 @@ async fn test_merkle_tree_generation() -> Result<(), MerkleTreeTestError> {
     let rent = test_context.context.banks_client.get_rent().await?;
 
     // Create account data
-    let account = AccountSharedData::new(rent.minimum_balance(space), space, &TIP_DISTRIBUTION_ID);
+    let mut account = AccountSharedData::new(rent.minimum_balance(space), space, &TIP_DISTRIBUTION_ID);
 
     let mut config_data = vec![0u8; space];
     let _ =config.serialize(&mut config_data);
 
     // Create account with data
-    let mut account = account;
     account.set_data(config_data);
 
     // Set the account
