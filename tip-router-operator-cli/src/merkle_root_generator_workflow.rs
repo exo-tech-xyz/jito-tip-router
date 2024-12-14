@@ -23,11 +23,11 @@ pub enum MerkleRootGeneratorError {
 
 pub async fn generate_merkle_root(
     stake_meta_coll: StakeMetaCollection,
-    bank: &EllipsisClient,
+    protocol_fee_bps: u16,
 ) -> Result<GeneratedMerkleTreeCollection, MerkleRootGeneratorError> {
     let merkle_tree_coll = GeneratedMerkleTreeCollection::new_from_stake_meta_collection(
         stake_meta_coll,
-        bank
+        protocol_fee_bps,
     ).await?;
 
     Ok(merkle_tree_coll)

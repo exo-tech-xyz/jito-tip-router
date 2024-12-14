@@ -37,18 +37,16 @@ use {
     self::snapshot_creator::MockSnapshotCreator,
     solana_program::stake::state::StakeState,
     thiserror::Error,
-    solana_sdk::account::{Account, AccountSharedData},
+    solana_sdk::account::{ Account, AccountSharedData },
     jito_tip_distribution::state::Config,
-    solana_rpc_client::BanksClient
 };
 
-
- struct TestContext {
+struct TestContext {
     pub context: ProgramTestContext,
     pub tip_distribution_program_id: Pubkey,
     pub tip_payment_program_id: Pubkey,
     pub payer: Keypair,
-    pub stake_accounts: Vec<Keypair>,  // Changed from single stake_account
+    pub stake_accounts: Vec<Keypair>, // Changed from single stake_account
     pub vote_account: Keypair,
     pub temp_dir: TempDir,
     pub output_dir: PathBuf,
@@ -103,20 +101,22 @@ impl TestContext {
 
         // Fund payer account
         let tx = Transaction::new_signed_with_payer(
-            &[system_instruction::transfer(
-                &context.payer.pubkey(),
-                &payer.pubkey(),
-                10_000_000_000, // Increased balance for multiple accounts
-            )],
+            &[
+                system_instruction::transfer(
+                    &context.payer.pubkey(),
+                    &payer.pubkey(),
+                    10_000_000_000 // Increased balance for multiple accounts
+                ),
+            ],
             Some(&context.payer.pubkey()),
             &[&context.payer],
-            context.last_blockhash,
+            context.last_blockhash
         );
         context.banks_client.process_transaction(tx).await?;
 
         // Create multiple stake accounts
         let stake_accounts = vec![Keypair::new(), Keypair::new(), Keypair::new()];
-        
+
         // Get rent and space requirements
         let rent = context.banks_client.get_rent().await?;
         let stake_space = std::mem::size_of::<StakeStateV2>();
@@ -131,23 +131,23 @@ impl TestContext {
                         &stake_account.pubkey(),
                         stake_rent,
                         stake_space as u64,
-                        &solana_program::stake::program::id(),
+                        &solana_program::stake::program::id()
                     ),
                     solana_program::stake::instruction::initialize(
                         &stake_account.pubkey(),
-                        &solana_sdk::stake::state::Authorized {
+                        &(solana_sdk::stake::state::Authorized {
                             staker: payer.pubkey(),
                             withdrawer: payer.pubkey(),
-                        },
-                        &solana_sdk::stake::state::Lockup::default(),
+                        }),
+                        &solana_sdk::stake::state::Lockup::default()
                     ),
                 ],
                 Some(&payer.pubkey()),
                 &[&payer, stake_account],
-                context.last_blockhash,
+                context.last_blockhash
             );
             context.banks_client.process_transaction(tx).await?;
-            
+
             // Update blockhash between transactions
             context.last_blockhash = context.banks_client.get_latest_blockhash().await?;
         }
@@ -160,14 +160,18 @@ impl TestContext {
             tip_distribution_program_id: TIP_DISTRIBUTION_ID,
             tip_payment_program_id: TIP_PAYMENT_ID,
             payer,
-            stake_accounts,  // Store all stake accounts instead of just one
+            stake_accounts, // Store all stake accounts instead of just one
             vote_account,
             temp_dir,
             output_dir,
         })
     }
 
-    fn create_test_stake_meta(&self, total_tips: u64, validator_fee_bps: u16) -> StakeMetaCollection {
+    fn create_test_stake_meta(
+        &self,
+        total_tips: u64,
+        validator_fee_bps: u16
+    ) -> StakeMetaCollection {
         let stake_meta = StakeMeta {
             validator_vote_account: self.vote_account.pubkey(),
             validator_node_pubkey: self.stake_accounts[0].pubkey(),
@@ -186,7 +190,7 @@ impl TestContext {
             total_delegated: 1_000_000,
             commission: 10,
         };
-    
+
         StakeMetaCollection {
             epoch: 0,
             stake_metas: vec![stake_meta],
@@ -204,20 +208,19 @@ impl TestContext {
     }
 }
 
-
 #[derive(Error, Debug)]
 pub enum MerkleTreeTestError {
-    #[error(transparent)]
-    ProgramTestError(#[from] ProgramTestError),
+    #[error(transparent)] ProgramTestError(#[from] ProgramTestError),
 
-    #[error(transparent)]
-    IoError(#[from] std::io::Error),
+    #[error(transparent)] IoError(#[from] std::io::Error),
 
-    #[error(transparent)]
-    BanksClientError(#[from] BanksClientError),
+    #[error(transparent)] BanksClientError(#[from] BanksClientError),
 
-    #[error("Other error: {0}")]
-    Other(Box<dyn std::error::Error>),
+    #[error(transparent)] MerkleRootGeneratorError(
+        #[from] merkle_root_generator_workflow::MerkleRootGeneratorError,
+    ), // Add this
+
+    #[error("Other error: {0}")] Other(Box<dyn std::error::Error>),
 }
 
 #[tokio::test]
@@ -230,32 +233,31 @@ async fn test_merkle_tree_generation() -> Result<(), MerkleTreeTestError> {
     let mut test_context = TestContext::new().await.map_err(|e| MerkleTreeTestError::Other(e))?;
 
     // Get config PDA
-    let (config_pda, bump) = Pubkey::find_program_address(
-        &[b"config"],
-        &TIP_DISTRIBUTION_ID,
-    );
+    let (config_pda, bump) = Pubkey::find_program_address(&[b"config"], &TIP_DISTRIBUTION_ID);
 
     // Create config account with protocol fee
     let config = TipAccountConfig {
         authority: test_context.payer.pubkey(),
-        protocol_fee_bps: PROTOCOL_FEE_BPS,  // 5% protocol fee
+        protocol_fee_bps: PROTOCOL_FEE_BPS, // 5% protocol fee
         bump,
     };
 
     // Create config account
-    let space = 32 + 2 + 1;  // pubkey (32) + u16 (2) + u8 (1)
+    let space = 32 + 2 + 1; // pubkey (32) + u16 (2) + u8 (1)
     let rent = test_context.context.banks_client.get_rent().await?;
-    
+
     // Create account data
-    let account = AccountSharedData::new(
-        rent.minimum_balance(space),
-        space,
-        &TIP_DISTRIBUTION_ID,
-    );
+    let account = AccountSharedData::new(rent.minimum_balance(space), space, &TIP_DISTRIBUTION_ID);
 
     // Set up config data
     let mut config_data = vec![0u8; space];
-    config.authority.to_bytes().iter().enumerate().for_each(|(i, byte)| config_data[i] = *byte);
+    config.authority
+        .to_bytes()
+        .iter()
+        .enumerate()
+        .for_each(|(i, byte)| {
+            config_data[i] = *byte;
+        });
     config_data[32..34].copy_from_slice(&config.protocol_fee_bps.to_le_bytes());
     config_data[34] = config.bump;
 
@@ -266,47 +268,55 @@ async fn test_merkle_tree_generation() -> Result<(), MerkleTreeTestError> {
     // Set the account
     test_context.context.set_account(&config_pda, &account);
 
-    
     let stake_meta_collection = test_context.create_test_stake_meta(TOTAL_TIPS, VALIDATOR_FEE_BPS);
 
-    let protocol_fee_amount = (TOTAL_TIPS as u128 * PROTOCOL_FEE_BPS as u128 / 10000u128) as u64;
-    let validator_fee_amount = (TOTAL_TIPS as u128 * VALIDATOR_FEE_BPS as u128 / 10000u128) as u64;
+    let protocol_fee_amount = (((TOTAL_TIPS as u128) * (PROTOCOL_FEE_BPS as u128)) /
+        10000u128) as u64;
+    let validator_fee_amount = (((TOTAL_TIPS as u128) * (VALIDATOR_FEE_BPS as u128)) /
+        10000u128) as u64;
     let remaining_tips = TOTAL_TIPS - protocol_fee_amount - validator_fee_amount;
 
-    let ellipsis_client = EllipsisClient::from_banks(
-        &test_context.context.banks_client,
-        &test_context.payer,
-    ).await.map_err(|e| MerkleTreeTestError::Other(Box::new(e)))?;
-    
+    // let ellipsis_client = EllipsisClient::from_banks(
+    //     &test_context.context.banks_client,
+    //     &test_context.payer,
+    // ).await.map_err(|e| MerkleTreeTestError::Other(Box::new(e)))?;
+
     // Then use it in generate_merkle_root
     let merkle_tree_coll = merkle_root_generator_workflow::generate_merkle_root(
         stake_meta_collection.clone(),
-        &ellipsis_client,
+        PROTOCOL_FEE_BPS
     ).await?;
 
     let generated_tree = &merkle_tree_coll.generated_merkle_trees[0];
     let nodes = &generated_tree.tree_nodes;
 
-    // Verify protocol fee node
-    let protocol_fee_recipient = config_pda;  // The config PDA is the protocol fee recipient
+    // Get the protocol fee recipient PDA - use the same derivation as in the implementation
+    let (protocol_fee_recipient, _) = Pubkey::find_program_address(
+        &[b"protocol_fee", &(0u64).to_le_bytes()],
+        &TIP_DISTRIBUTION_ID
+    );
 
-    let protocol_fee_node = nodes.iter()
+    let protocol_fee_node = nodes
+        .iter()
         .find(|node| node.claimant == protocol_fee_recipient)
         .expect("Protocol fee node should exist");
     assert_eq!(protocol_fee_node.amount, protocol_fee_amount);
 
     // Verify validator fee node
-    let validator_fee_node = nodes.iter()
+    let validator_fee_node = nodes
+        .iter()
         .find(|node| node.claimant == stake_meta_collection.stake_metas[0].validator_node_pubkey)
         .expect("Validator fee node should exist");
     assert_eq!(validator_fee_node.amount, validator_fee_amount);
 
     // Verify delegator nodes
     for delegation in &stake_meta_collection.stake_metas[0].delegations {
-        let delegator_share = (remaining_tips as u128 * delegation.lamports_delegated as u128 
-            / stake_meta_collection.stake_metas[0].total_delegated as u128) as u64;
+        let delegator_share = (((remaining_tips as u128) *
+            (delegation.lamports_delegated as u128)) /
+            (stake_meta_collection.stake_metas[0].total_delegated as u128)) as u64;
 
-        let delegator_node = nodes.iter()
+        let delegator_node = nodes
+            .iter()
             .find(|node| node.claimant == delegation.staker_pubkey)
             .expect("Delegator node should exist");
         assert_eq!(

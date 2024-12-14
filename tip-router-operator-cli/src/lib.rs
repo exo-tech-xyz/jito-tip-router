@@ -146,25 +146,13 @@ fn emit_inconsistent_tree_node_amount_dp(
 impl GeneratedMerkleTreeCollection {
     pub async fn new_from_stake_meta_collection(
         stake_meta_coll: StakeMetaCollection,
-        banks_client:  &EllipsisClient,
+        protocol_fee_bps: u16,
     ) -> Result<GeneratedMerkleTreeCollection, MerkleRootGeneratorError> {
         let (config_pda, _) = Pubkey::find_program_address(
             &[CONFIG_ACCOUNT_SEED],
             &stake_meta_coll.tip_distribution_program_id,
         );
-    
-        // Fix account retrieval
-        let config_account = banks_client.get_account(&config_pda)
-            .await
-            .map_err(|_| MerkleRootGeneratorError::AccountNotFound)?;
-            
-    let config = TipAccountConfig::deserialize(&mut config_account.data())
-        .map_err(|_| MerkleRootGeneratorError::DeserializationError)?;
-
-
-
-        let protocol_fee_bps = config.protocol_fee_bps;
-    
+        
         let generated_merkle_trees = stake_meta_coll
             .stake_metas
             .into_iter()
