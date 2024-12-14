@@ -4,7 +4,7 @@ pub mod merkle_root_upload_workflow;
 pub mod reclaim_rent_workflow;
 pub mod stake_meta_generator_workflow;
 pub mod snapshot;
-pub use crate::cli::{Cli, Commands};
+pub use crate::cli::{ Cli, Commands };
 pub mod cli;
 pub use crate::process_epoch::process_epoch;
 pub mod process_epoch;
@@ -17,56 +17,62 @@ use {
     anchor_lang::Id,
     jito_tip_distribution::{
         program::JitoTipDistribution,
-        state::{ClaimStatus, TipDistributionAccount},
+        state::{ ClaimStatus, TipDistributionAccount },
     },
     jito_tip_payment::{
-        Config, CONFIG_ACCOUNT_SEED, TIP_ACCOUNT_SEED_0, TIP_ACCOUNT_SEED_1, TIP_ACCOUNT_SEED_2,
-        TIP_ACCOUNT_SEED_3, TIP_ACCOUNT_SEED_4, TIP_ACCOUNT_SEED_5, TIP_ACCOUNT_SEED_6,
+        Config,
+        CONFIG_ACCOUNT_SEED,
+        TIP_ACCOUNT_SEED_0,
+        TIP_ACCOUNT_SEED_1,
+        TIP_ACCOUNT_SEED_2,
+        TIP_ACCOUNT_SEED_3,
+        TIP_ACCOUNT_SEED_4,
+        TIP_ACCOUNT_SEED_5,
+        TIP_ACCOUNT_SEED_6,
         TIP_ACCOUNT_SEED_7,
     },
     log::*,
-    serde::{de::DeserializeOwned, Deserialize, Serialize},
+    serde::{ de::DeserializeOwned, Deserialize, Serialize },
     solana_client::{
         nonblocking::rpc_client::RpcClient,
-        rpc_client::{RpcClient as SyncRpcClient, SerializableTransaction},
+        rpc_client::{ RpcClient as SyncRpcClient, SerializableTransaction },
     },
     solana_merkle_tree::MerkleTree,
-    solana_metrics::{datapoint_error, datapoint_warn},
+    solana_metrics::{ datapoint_error, datapoint_warn },
     solana_program::{
         instruction::InstructionError,
         rent::{
-            ACCOUNT_STORAGE_OVERHEAD, DEFAULT_EXEMPTION_THRESHOLD, DEFAULT_LAMPORTS_PER_BYTE_YEAR,
+            ACCOUNT_STORAGE_OVERHEAD,
+            DEFAULT_EXEMPTION_THRESHOLD,
+            DEFAULT_LAMPORTS_PER_BYTE_YEAR,
         },
     },
     solana_rpc_client_api::{
-        client_error::{Error, ErrorKind},
+        client_error::{ Error, ErrorKind },
         config::RpcSendTransactionConfig,
-        request::{RpcError, RpcResponseErrorData, MAX_MULTIPLE_ACCOUNTS},
+        request::{ RpcError, RpcResponseErrorData, MAX_MULTIPLE_ACCOUNTS },
         response::RpcSimulateTransactionResult,
     },
     solana_sdk::{
-        account::{Account, AccountSharedData, ReadableAccount},
+        account::{ Account, AccountSharedData, ReadableAccount },
         clock::Slot,
-        commitment_config::{CommitmentConfig, CommitmentLevel},
-        hash::{Hash, Hasher},
+        commitment_config::{ CommitmentConfig, CommitmentLevel },
+        hash::{ Hash, Hasher },
         pubkey::Pubkey,
-        signature::{Keypair, Signature},
+        signature::{ Keypair, Signature },
         stake_history::Epoch,
-        transaction::{
-            Transaction,
-            TransactionError::{self},
-        },
+        transaction::{ Transaction, TransactionError::{ self } },
     },
     solana_transaction_status::TransactionStatus,
     std::{
-        collections::{HashMap, HashSet},
+        collections::{ HashMap, HashSet },
         fs::File,
         io::BufReader,
         path::PathBuf,
         sync::Arc,
-        time::{Duration, Instant},
+        time::{ Duration, Instant },
     },
-    tokio::{sync::Semaphore, time::sleep},
+    tokio::{ sync::Semaphore, time::sleep },
     solana_runtime::bank::Bank,
     log::error,
     anchor_lang::prelude::*,
@@ -109,13 +115,14 @@ pub struct TipAccountConfig {
 fn emit_inconsistent_tree_node_amount_dp(
     tree_nodes: &[TreeNode],
     tip_distribution_account: &Pubkey,
-    rpc_client: &SyncRpcClient,
+    rpc_client: &SyncRpcClient
 ) {
-    let actual_claims: u64 = tree_nodes.iter().map(|t| t.amount).sum();
+    let actual_claims: u64 = tree_nodes
+        .iter()
+        .map(|t| t.amount)
+        .sum();
     let tda = rpc_client.get_account(tip_distribution_account).unwrap();
-    let min_rent = rpc_client
-        .get_minimum_balance_for_rent_exemption(tda.data.len())
-        .unwrap();
+    let min_rent = rpc_client.get_minimum_balance_for_rent_exemption(tda.data.len()).unwrap();
 
     let expected_claims = tda.lamports.checked_sub(min_rent).unwrap();
     if actual_claims == expected_claims {
@@ -125,62 +132,65 @@ fn emit_inconsistent_tree_node_amount_dp(
     if actual_claims > expected_claims {
         datapoint_error!(
             "tip-distributor",
-            (
-                "actual_claims_exceeded",
-                format!("tip_distribution_account={tip_distribution_account},actual_claims={actual_claims}, expected_claims={expected_claims}"),
-                String
-            ),
+            ("actual_claims_exceeded", format!(
+                "tip_distribution_account={tip_distribution_account},actual_claims={actual_claims}, expected_claims={expected_claims}"
+            ), String)
         );
     } else {
-        datapoint_warn!(
-            "tip-distributor",
-            (
-                "actual_claims_below",
-                format!("tip_distribution_account={tip_distribution_account},actual_claims={actual_claims}, expected_claims={expected_claims}"),
-                String
+        datapoint_warn!("tip-distributor", (
+            "actual_claims_below",
+            format!(
+                "tip_distribution_account={tip_distribution_account},actual_claims={actual_claims}, expected_claims={expected_claims}"
             ),
-        );
+            String
+        ));
     }
 }
 
 impl GeneratedMerkleTreeCollection {
     pub async fn new_from_stake_meta_collection(
         stake_meta_coll: StakeMetaCollection,
-        protocol_fee_bps: u16,
+        protocol_fee_bps: u16
     ) -> Result<GeneratedMerkleTreeCollection, MerkleRootGeneratorError> {
         let (config_pda, _) = Pubkey::find_program_address(
             &[CONFIG_ACCOUNT_SEED],
-            &stake_meta_coll.tip_distribution_program_id,
+            &stake_meta_coll.tip_distribution_program_id
         );
-        
-        let generated_merkle_trees = stake_meta_coll
-            .stake_metas
+
+        let generated_merkle_trees = stake_meta_coll.stake_metas
             .into_iter()
             .filter(|stake_meta| stake_meta.maybe_tip_distribution_meta.is_some())
             .map(|stake_meta| {
-                let tip_distribution_meta = stake_meta.maybe_tip_distribution_meta.as_ref().unwrap();
-                
+                let tip_distribution_meta = stake_meta.maybe_tip_distribution_meta
+                    .as_ref()
+                    .unwrap();
+
                 // Calculate fees
-                let protocol_fee_amount = (tip_distribution_meta.total_tips as u128 * protocol_fee_bps as u128 / 10000u128) as u64;
-                let validator_fee_amount = (tip_distribution_meta.total_tips as u128 * tip_distribution_meta.validator_fee_bps as u128 / 10000u128) as u64;
-                let remaining_tips = tip_distribution_meta.total_tips - protocol_fee_amount - validator_fee_amount;
+                let protocol_fee_amount = (((tip_distribution_meta.total_tips as u128) *
+                    (protocol_fee_bps as u128)) /
+                    10000u128) as u64;
+                let validator_fee_amount = (((tip_distribution_meta.total_tips as u128) *
+                    (tip_distribution_meta.validator_fee_bps as u128)) /
+                    10000u128) as u64;
+                let remaining_tips =
+                    tip_distribution_meta.total_tips - protocol_fee_amount - validator_fee_amount;
 
                 // Create nodes in order: protocol fee, validator fee, delegators
                 let mut tree_nodes = Vec::with_capacity(2 + stake_meta.delegations.len());
 
                 // 1. Protocol Fee Node
                 let (protocol_fee_recipient, _) = Pubkey::find_program_address(
-                    &[b"protocol_fee", &0u64.to_le_bytes()],
-                    &stake_meta_coll.tip_distribution_program_id,
+                    &[b"protocol_fee", &(0u64).to_le_bytes()],
+                    &stake_meta_coll.tip_distribution_program_id
                 );
-                
+
                 let (claim_status_pubkey, claim_status_bump) = Pubkey::find_program_address(
                     &[
                         ClaimStatus::SEED,
                         &protocol_fee_recipient.to_bytes(),
                         &tip_distribution_meta.tip_distribution_pubkey.to_bytes(),
                     ],
-                    &JitoTipDistribution::id(),
+                    &JitoTipDistribution::id()
                 );
 
                 tree_nodes.push(TreeNode {
@@ -200,7 +210,7 @@ impl GeneratedMerkleTreeCollection {
                         &stake_meta.validator_node_pubkey.to_bytes(),
                         &tip_distribution_meta.tip_distribution_pubkey.to_bytes(),
                     ],
-                    &JitoTipDistribution::id(),
+                    &JitoTipDistribution::id()
                 );
 
                 tree_nodes.push(TreeNode {
@@ -215,8 +225,9 @@ impl GeneratedMerkleTreeCollection {
 
                 // 3. Delegator Nodes
                 for delegation in &stake_meta.delegations {
-                    let delegator_share = (remaining_tips as u128 * delegation.lamports_delegated as u128 
-                        / stake_meta.total_delegated as u128) as u64;
+                    let delegator_share = (((remaining_tips as u128) *
+                        (delegation.lamports_delegated as u128)) /
+                        (stake_meta.total_delegated as u128)) as u64;
 
                     let (claim_status_pubkey, claim_status_bump) = Pubkey::find_program_address(
                         &[
@@ -224,7 +235,7 @@ impl GeneratedMerkleTreeCollection {
                             &delegation.staker_pubkey.to_bytes(),
                             &tip_distribution_meta.tip_distribution_pubkey.to_bytes(),
                         ],
-                        &JitoTipDistribution::id(),
+                        &JitoTipDistribution::id()
                     );
 
                     tree_nodes.push(TreeNode {
@@ -239,7 +250,8 @@ impl GeneratedMerkleTreeCollection {
                 }
 
                 // Create merkle tree and add proofs
-                let hashed_nodes: Vec<[u8; 32]> = tree_nodes.iter()
+                let hashed_nodes: Vec<[u8; 32]> = tree_nodes
+                    .iter()
                     .map(|n| n.hash().to_bytes())
                     .collect();
 
@@ -298,7 +310,14 @@ fn derive_tip_payment_pubkeys(program_id: &Pubkey) -> TipPaymentPubkeys {
     TipPaymentPubkeys {
         config_pda,
         tip_pdas: vec![
-            tip_pda_0, tip_pda_1, tip_pda_2, tip_pda_3, tip_pda_4, tip_pda_5, tip_pda_6, tip_pda_7,
+            tip_pda_0,
+            tip_pda_1,
+            tip_pda_2,
+            tip_pda_3,
+            tip_pda_4,
+            tip_pda_5,
+            tip_pda_6,
+            tip_pda_7
         ],
     }
 }
@@ -331,7 +350,7 @@ pub struct TreeNode {
 
 impl TreeNode {
     fn vec_from_stake_meta(
-        stake_meta: &StakeMeta,
+        stake_meta: &StakeMeta
     ) -> Result<Option<Vec<TreeNode>>, MerkleRootGeneratorError> {
         if let Some(tip_distribution_meta) = stake_meta.maybe_tip_distribution_meta.as_ref() {
             // Calculate protocol fee (5%)
@@ -341,33 +360,32 @@ impl TreeNode {
                 .unwrap()
                 .checked_div(10_000)
                 .unwrap() as u64;
-    
+
             // Calculate validator fee
             let validator_amount = (tip_distribution_meta.total_tips as u128)
                 .checked_mul(tip_distribution_meta.validator_fee_bps as u128)
                 .unwrap()
                 .checked_div(10_000)
                 .unwrap() as u64;
-    
+
             // Calculate remaining rewards after both fees
-            let remaining_total_rewards = tip_distribution_meta
-                .total_tips
+            let remaining_total_rewards = tip_distribution_meta.total_tips
                 .checked_sub(protocol_fee_amount)
                 .unwrap()
                 .checked_sub(validator_amount)
                 .unwrap() as u128;
-    
+
             let (claim_status_pubkey, claim_status_bump) = Pubkey::find_program_address(
                 &[
                     ClaimStatus::SEED,
-                    &stake_meta.validator_node_pubkey.to_bytes(),  // Changed to validator_node_pubkey
+                    &stake_meta.validator_node_pubkey.to_bytes(), // Changed to validator_node_pubkey
                     &tip_distribution_meta.tip_distribution_pubkey.to_bytes(),
                 ],
-                &JitoTipDistribution::id(),
+                &JitoTipDistribution::id()
             );
-    
+
             let mut tree_nodes = vec![TreeNode {
-                claimant: stake_meta.validator_node_pubkey,  // Changed to validator_node_pubkey
+                claimant: stake_meta.validator_node_pubkey, // Changed to validator_node_pubkey
                 claim_status_pubkey,
                 claim_status_bump,
                 staker_pubkey: Pubkey::default(),
@@ -375,15 +393,15 @@ impl TreeNode {
                 amount: validator_amount,
                 proof: None,
             }];
-    
+
             let total_delegated = stake_meta.total_delegated as u128;
             tree_nodes.extend(
-                stake_meta
-                    .delegations
+                stake_meta.delegations
                     .iter()
                     .map(|delegation| {
                         let amount_delegated = delegation.lamports_delegated as u128;
-                        let reward_amount = (amount_delegated.checked_mul(remaining_total_rewards))
+                        let reward_amount = amount_delegated
+                            .checked_mul(remaining_total_rewards)
                             .unwrap()
                             .checked_div(total_delegated)
                             .unwrap();
@@ -393,7 +411,7 @@ impl TreeNode {
                                 &delegation.staker_pubkey.to_bytes(),
                                 &tip_distribution_meta.tip_distribution_pubkey.to_bytes(),
                             ],
-                            &JitoTipDistribution::id(),
+                            &JitoTipDistribution::id()
                         );
                         Ok(TreeNode {
                             claimant: delegation.staker_pubkey,
@@ -405,9 +423,9 @@ impl TreeNode {
                             proof: None,
                         })
                     })
-                    .collect::<Result<Vec<TreeNode>, MerkleRootGeneratorError>>()?,
+                    .collect::<Result<Vec<TreeNode>, MerkleRootGeneratorError>>()?
             );
-    
+
             Ok(Some(tree_nodes))
         } else {
             Ok(None)
@@ -464,8 +482,7 @@ pub struct StakeMeta {
 
 impl Ord for StakeMeta {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.validator_vote_account
-            .cmp(&other.validator_vote_account)
+        self.validator_vote_account.cmp(&other.validator_vote_account)
     }
 }
 
@@ -495,21 +512,16 @@ impl TipDistributionMeta {
     fn from_tda_wrapper(
         tda_wrapper: TipDistributionAccountWrapper,
         // The amount that will be left remaining in the tda to maintain rent exemption status.
-        rent_exempt_amount: u64,
+        rent_exempt_amount: u64
     ) -> Result<Self, stake_meta_generator_workflow::StakeMetaGeneratorError> {
         Ok(TipDistributionMeta {
             tip_distribution_pubkey: tda_wrapper.tip_distribution_pubkey,
-            total_tips: tda_wrapper
-                .account_data
+            total_tips: tda_wrapper.account_data
                 .lamports()
                 .checked_sub(rent_exempt_amount)
                 .ok_or(CheckedMathError)?,
-            validator_fee_bps: tda_wrapper
-                .tip_distribution_account
-                .validator_commission_bps,
-            merkle_root_upload_authority: tda_wrapper
-                .tip_distribution_account
-                .merkle_root_upload_authority,
+            validator_fee_bps: tda_wrapper.tip_distribution_account.validator_commission_bps,
+            merkle_root_upload_authority: tda_wrapper.tip_distribution_account.merkle_root_upload_authority,
         })
     }
 }
@@ -536,13 +548,14 @@ impl Ord for Delegation {
             self.withdrawer_pubkey,
             self.staker_pubkey,
             self.lamports_delegated,
-        )
-            .cmp(&(
+        ).cmp(
+            &(
                 other.stake_account_pubkey,
                 other.withdrawer_pubkey,
                 other.staker_pubkey,
                 other.lamports_delegated,
-            ))
+            )
+        )
     }
 }
 
@@ -563,7 +576,7 @@ pub struct TipDistributionAccountWrapper {
 pub fn derive_tip_distribution_account_address(
     tip_distribution_program_id: &Pubkey,
     vote_pubkey: &Pubkey,
-    epoch: Epoch,
+    epoch: Epoch
 ) -> (Pubkey, u8) {
     Pubkey::find_program_address(
         &[
@@ -571,7 +584,7 @@ pub fn derive_tip_distribution_account_address(
             vote_pubkey.to_bytes().as_ref(),
             epoch.to_le_bytes().as_ref(),
         ],
-        tip_distribution_program_id,
+        tip_distribution_program_id
     )
 }
 
@@ -584,14 +597,11 @@ pub async fn sign_and_send_transactions_with_retries(
     max_concurrent_rpc_get_reqs: usize,
     transactions: Vec<Transaction>,
     txn_send_batch_size: usize,
-    max_loop_duration: Duration,
+    max_loop_duration: Duration
 ) -> (Vec<Transaction>, HashMap<Signature, Error>) {
     let semaphore = Arc::new(Semaphore::new(max_concurrent_rpc_get_reqs));
     let mut errors = HashMap::default();
-    let mut blockhash = rpc_client
-        .get_latest_blockhash()
-        .await
-        .expect("fetch latest blockhash");
+    let mut blockhash = rpc_client.get_latest_blockhash().await.expect("fetch latest blockhash");
     // track unsigned txns
     let mut transactions_to_process = transactions
         .into_iter()
@@ -607,10 +617,7 @@ pub async fn sign_and_send_transactions_with_retries(
         // or (120*0.4s) = 48s to land a tx before it expires
         // if we’re refreshing every 30s, then any txs sent immediately before the refresh would likely expire
         if start.elapsed() > Duration::from_secs(1) {
-            blockhash = rpc_client
-                .get_latest_blockhash()
-                .await
-                .expect("fetch latest blockhash");
+            blockhash = rpc_client.get_latest_blockhash().await.expect("fetch latest blockhash");
         }
         info!(
             "Sending {txn_send_batch_size} of {} transactions to claim mev tips",
@@ -631,11 +638,13 @@ pub async fn sign_and_send_transactions_with_retries(
         let send_res = futures::future::join_all(send_futs).await;
         let new_errors = send_res
             .into_iter()
-            .filter_map(|(hash, txn, result)| match result {
-                Err(e) => Some((txn.signatures[0], e)),
-                Ok(..) => {
-                    let _ = transactions_to_process.remove(&hash);
-                    None
+            .filter_map(|(hash, txn, result)| {
+                match result {
+                    Err(e) => Some((txn.signatures[0], e)),
+                    Ok(..) => {
+                        let _ = transactions_to_process.remove(&hash);
+                        None
+                    }
                 }
             })
             .collect::<HashMap<_, _>>();
@@ -650,7 +659,7 @@ pub async fn send_until_blockhash_expires(
     rpc_client: &RpcClient,
     transactions: Vec<Transaction>,
     blockhash: Hash,
-    keypair: &Arc<Keypair>,
+    keypair: &Arc<Keypair>
 ) -> solana_rpc_client_api::client_error::Result<()> {
     let mut claim_transactions: HashMap<Signature, Transaction> = transactions
         .into_iter()
@@ -662,54 +671,48 @@ pub async fn send_until_blockhash_expires(
 
     let txs_requesting_send = claim_transactions.len();
 
-    while rpc_client
-        .is_blockhash_valid(&blockhash, CommitmentConfig::processed())
-        .await?
-    {
+    while rpc_client.is_blockhash_valid(&blockhash, CommitmentConfig::processed()).await? {
         let mut check_signatures = HashSet::with_capacity(claim_transactions.len());
         let mut already_processed = HashSet::with_capacity(claim_transactions.len());
         let mut is_blockhash_not_found = false;
 
         for (signature, tx) in &claim_transactions {
-            match rpc_client
-                .send_transaction_with_config(
-                    tx,
-                    RpcSendTransactionConfig {
-                        skip_preflight: false,
-                        preflight_commitment: Some(CommitmentLevel::Confirmed),
-                        max_retries: Some(2),
-                        ..RpcSendTransactionConfig::default()
-                    },
-                )
-                .await
+            match
+                rpc_client.send_transaction_with_config(tx, RpcSendTransactionConfig {
+                    skip_preflight: false,
+                    preflight_commitment: Some(CommitmentLevel::Confirmed),
+                    max_retries: Some(2),
+                    ..RpcSendTransactionConfig::default()
+                }).await
             {
                 Ok(_) => {
                     check_signatures.insert(*signature);
                 }
-                Err(e) => match e.get_transaction_error() {
-                    Some(TransactionError::BlockhashNotFound) => {
-                        is_blockhash_not_found = true;
-                        break;
+                Err(e) =>
+                    match e.get_transaction_error() {
+                        Some(TransactionError::BlockhashNotFound) => {
+                            is_blockhash_not_found = true;
+                            break;
+                        }
+                        Some(TransactionError::AlreadyProcessed) => {
+                            already_processed.insert(*tx.get_signature());
+                        }
+                        Some(e) => {
+                            warn!(
+                                "TransactionError sending signature: {} error: {:?} tx: {:?}",
+                                tx.get_signature(),
+                                e,
+                                tx
+                            );
+                        }
+                        None => {
+                            warn!(
+                                "Unknown error sending transaction signature: {} error: {:?}",
+                                tx.get_signature(),
+                                e
+                            );
+                        }
                     }
-                    Some(TransactionError::AlreadyProcessed) => {
-                        already_processed.insert(*tx.get_signature());
-                    }
-                    Some(e) => {
-                        warn!(
-                            "TransactionError sending signature: {} error: {:?} tx: {:?}",
-                            tx.get_signature(),
-                            e,
-                            tx
-                        );
-                    }
-                    None => {
-                        warn!(
-                            "Unknown error sending transaction signature: {} error: {:?}",
-                            tx.get_signature(),
-                            e
-                        );
-                    }
-                },
             }
         }
 
@@ -734,9 +737,7 @@ pub async fn send_until_blockhash_expires(
         }
     }
 
-    let num_landed = txs_requesting_send
-        .checked_sub(claim_transactions.len())
-        .unwrap();
+    let num_landed = txs_requesting_send.checked_sub(claim_transactions.len()).unwrap();
     info!("num_landed: {:?}", num_landed);
 
     Ok(())
@@ -744,7 +745,7 @@ pub async fn send_until_blockhash_expires(
 
 pub async fn get_batched_signatures_statuses(
     rpc_client: &RpcClient,
-    signatures: &[Signature],
+    signatures: &[Signature]
 ) -> solana_rpc_client_api::client_error::Result<Vec<(Signature, Option<TransactionStatus>)>> {
     let mut signature_statuses = Vec::new();
 
@@ -764,7 +765,7 @@ async fn signed_send(
     signer: &Keypair,
     rpc_client: &RpcClient,
     blockhash: Hash,
-    mut txn: Transaction,
+    mut txn: Transaction
 ) -> (Transaction, solana_rpc_client_api::client_error::Result<()>) {
     txn.sign(&[signer], blockhash); // just in time signing
     let res = match rpc_client.send_and_confirm_transaction(&txn).await {
@@ -772,25 +773,26 @@ async fn signed_send(
         Err(e) => {
             match e.kind {
                 // Already claimed, skip.
-                ErrorKind::TransactionError(TransactionError::AlreadyProcessed)
-                | ErrorKind::TransactionError(TransactionError::InstructionError(
-                    0,
-                    InstructionError::Custom(0),
-                ))
-                | ErrorKind::RpcError(RpcError::RpcResponseError {
-                    data:
-                        RpcResponseErrorData::SendTransactionPreflightFailure(
-                            RpcSimulateTransactionResult {
-                                err:
-                                    Some(TransactionError::InstructionError(
-                                        0,
-                                        InstructionError::Custom(0),
-                                    )),
-                                ..
-                            },
-                        ),
-                    ..
-                }) => Ok(()),
+                | ErrorKind::TransactionError(TransactionError::AlreadyProcessed)
+                | ErrorKind::TransactionError(
+                      TransactionError::InstructionError(0, InstructionError::Custom(0)),
+                  )
+                | ErrorKind::RpcError(
+                      RpcError::RpcResponseError {
+                          data: RpcResponseErrorData::SendTransactionPreflightFailure(
+                              RpcSimulateTransactionResult {
+                                  err: Some(
+                                      TransactionError::InstructionError(
+                                          0,
+                                          InstructionError::Custom(0),
+                                      ),
+                                  ),
+                                  ..
+                              },
+                          ),
+                          ..
+                      },
+                  ) => Ok(()),
 
                 // transaction got held up too long and blockhash expired. retry txn
                 ErrorKind::TransactionError(TransactionError::BlockhashNotFound) => Err(e),
@@ -812,7 +814,7 @@ async fn signed_send(
 
 async fn get_batched_accounts(
     rpc_client: &RpcClient,
-    pubkeys: &[Pubkey],
+    pubkeys: &[Pubkey]
 ) -> solana_rpc_client_api::client_error::Result<HashMap<Pubkey, Option<Account>>> {
     let mut batched_accounts = HashMap::new();
 
@@ -826,41 +828,36 @@ async fn get_batched_accounts(
 /// Calculates the minimum balance needed to be rent-exempt
 /// taken from: https://github.com/jito-foundation/jito-solana/blob/d1ba42180d0093dd59480a77132477323a8e3f88/sdk/program/src/rent.rs#L78
 pub fn minimum_balance(data_len: usize) -> u64 {
-    ((((ACCOUNT_STORAGE_OVERHEAD
-        .checked_add(data_len as u64)
-        .unwrap())
-    .checked_mul(DEFAULT_LAMPORTS_PER_BYTE_YEAR))
-    .unwrap() as f64)
-        * DEFAULT_EXEMPTION_THRESHOLD) as u64
+    ((
+        ACCOUNT_STORAGE_OVERHEAD.checked_add(data_len as u64)
+            .unwrap()
+            .checked_mul(DEFAULT_LAMPORTS_PER_BYTE_YEAR)
+            .unwrap() as f64
+    ) * DEFAULT_EXEMPTION_THRESHOLD) as u64
 }
 
 mod pubkey_string_conversion {
-    use {
-        serde::{self, Deserialize, Deserializer, Serializer},
+    use ::{
+        serde::{ self, Deserialize, Deserializer, Serializer },
         solana_sdk::pubkey::Pubkey,
         std::str::FromStr,
     };
 
     pub(crate) fn serialize<S>(pubkey: &Pubkey, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
+        where S: Serializer
     {
         serializer.serialize_str(&pubkey.to_string())
     }
 
     pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<Pubkey, D::Error>
-    where
-        D: Deserializer<'de>,
+        where D: Deserializer<'de>
     {
         let s = String::deserialize(deserializer)?;
         Pubkey::from_str(&s).map_err(serde::de::Error::custom)
     }
 }
 
-pub fn read_json_from_file<T>(path: &PathBuf) -> serde_json::Result<T>
-where
-    T: DeserializeOwned,
-{
+pub fn read_json_from_file<T>(path: &PathBuf) -> serde_json::Result<T> where T: DeserializeOwned {
     let file = File::open(path).unwrap();
     let reader = BufReader::new(file);
     serde_json::from_reader(reader)
@@ -868,19 +865,22 @@ where
 
 #[cfg(test)]
 mod tests {
-    use {super::*, jito_tip_distribution::merkle_proof};
+    use ::{ super::*, jito_tip_distribution::merkle_proof };
 
     #[test]
     fn test_merkle_tree_verify() {
         // Create the merkle tree and proofs
         let tda = Pubkey::new_unique();
         let (acct_0, acct_1) = (Pubkey::new_unique(), Pubkey::new_unique());
-        let claim_statuses = &[(acct_0, tda), (acct_1, tda)]
+        let claim_statuses = &[
+            (acct_0, tda),
+            (acct_1, tda),
+        ]
             .iter()
             .map(|(claimant, tda)| {
                 Pubkey::find_program_address(
                     &[ClaimStatus::SEED, &claimant.to_bytes(), &tda.to_bytes()],
-                    &JitoTipDistribution::id(),
+                    &JitoTipDistribution::id()
                 )
             })
             .collect::<Vec<(Pubkey, u8)>>();
@@ -902,11 +902,14 @@ mod tests {
                 withdrawer_pubkey: Pubkey::default(),
                 amount: 176_624,
                 proof: None,
-            },
+            }
         ];
 
         // First the nodes are hashed and merkle tree constructed
-        let hashed_nodes: Vec<[u8; 32]> = tree_nodes.iter().map(|n| n.hash().to_bytes()).collect();
+        let hashed_nodes: Vec<[u8; 32]> = tree_nodes
+            .iter()
+            .map(|n| n.hash().to_bytes())
+            .collect();
         let mk = MerkleTree::new(&hashed_nodes[..], true);
         let root = mk.get_root().expect("to have valid root").to_bytes();
 
@@ -921,25 +924,20 @@ mod tests {
         assert!(merkle_proof::verify(proof, root, node.to_bytes()));
     }
 
-    #[test]
-    fn test_new_from_stake_meta_collection_happy_path() {
+    #[tokio::test]
+    async fn test_new_from_stake_meta_collection_happy_path() {
         let merkle_root_upload_authority = Pubkey::new_unique();
-
         let (tda_0, tda_1) = (Pubkey::new_unique(), Pubkey::new_unique());
-
         let stake_account_0 = Pubkey::new_unique();
         let stake_account_1 = Pubkey::new_unique();
         let stake_account_2 = Pubkey::new_unique();
         let stake_account_3 = Pubkey::new_unique();
-
         let staker_account_0 = Pubkey::new_unique();
         let staker_account_1 = Pubkey::new_unique();
         let staker_account_2 = Pubkey::new_unique();
         let staker_account_3 = Pubkey::new_unique();
-
         let validator_vote_account_0 = Pubkey::new_unique();
         let validator_vote_account_1 = Pubkey::new_unique();
-
         let validator_id_0 = Pubkey::new_unique();
         let validator_id_1 = Pubkey::new_unique();
 
@@ -966,7 +964,7 @@ mod tests {
                             staker_pubkey: staker_account_1,
                             withdrawer_pubkey: staker_account_1,
                             lamports_delegated: 144_555_444_556,
-                        },
+                        }
                     ],
                     total_delegated: 1_555_123_000_333_454_000,
                     commission: 100,
@@ -992,11 +990,11 @@ mod tests {
                             staker_pubkey: staker_account_3,
                             withdrawer_pubkey: staker_account_3,
                             lamports_delegated: 700_888_944_555,
-                        },
+                        }
                     ],
                     total_delegated: 2_565_318_909_444_123,
                     commission: 10,
-                },
+                }
             ],
             tip_distribution_program_id: Pubkey::new_unique(),
             bank_hash: Hash::new_unique().to_string(),
@@ -1006,66 +1004,84 @@ mod tests {
 
         let merkle_tree_collection = GeneratedMerkleTreeCollection::new_from_stake_meta_collection(
             stake_meta_collection.clone(),
-            None,
-        )
-        .unwrap();
+            300
+        ).await.unwrap();
 
         assert_eq!(stake_meta_collection.epoch, merkle_tree_collection.epoch);
-        assert_eq!(
-            stake_meta_collection.bank_hash,
-            merkle_tree_collection.bank_hash
-        );
+        assert_eq!(stake_meta_collection.bank_hash, merkle_tree_collection.bank_hash);
         assert_eq!(stake_meta_collection.slot, merkle_tree_collection.slot);
         assert_eq!(
             stake_meta_collection.stake_metas.len(),
             merkle_tree_collection.generated_merkle_trees.len()
         );
+
+        let protocol_fee_recipient = Pubkey::find_program_address(
+            &[b"protocol_fee", &(0u64).to_le_bytes()],
+            &stake_meta_collection.tip_distribution_program_id
+        ).0;
+
         let claim_statuses = &[
+            (protocol_fee_recipient, tda_0),
             (validator_vote_account_0, tda_0),
             (stake_account_0, tda_0),
             (stake_account_1, tda_0),
+            (protocol_fee_recipient, tda_1),
             (validator_vote_account_1, tda_1),
             (stake_account_2, tda_1),
             (stake_account_3, tda_1),
         ]
-        .iter()
-        .map(|(claimant, tda)| {
-            Pubkey::find_program_address(
-                &[ClaimStatus::SEED, &claimant.to_bytes(), &tda.to_bytes()],
-                &JitoTipDistribution::id(),
-            )
-        })
-        .collect::<Vec<(Pubkey, u8)>>();
+            .iter()
+            .map(|(claimant, tda)| {
+                Pubkey::find_program_address(
+                    &[ClaimStatus::SEED, &claimant.to_bytes(), &tda.to_bytes()],
+                    &JitoTipDistribution::id()
+                )
+            })
+            .collect::<Vec<(Pubkey, u8)>>();
+
         let tree_nodes = vec![
             TreeNode {
-                claimant: validator_vote_account_0,
+                claimant: protocol_fee_recipient,
                 claim_status_pubkey: claim_statuses[0].0,
                 claim_status_bump: claim_statuses[0].1,
+                staker_pubkey: Pubkey::default(),
+                withdrawer_pubkey: Pubkey::default(),
+                amount: 57_003_663_330, // 3% of 1_900_122_111_000
+                proof: None,
+            },
+            TreeNode {
+                claimant: validator_id_0, // Changed from validator_vote_account_0 to validator_id_0
+                claim_status_pubkey: claim_statuses[1].0,
+                claim_status_bump: claim_statuses[1].1,
                 staker_pubkey: Pubkey::default(),
                 withdrawer_pubkey: Pubkey::default(),
                 amount: 19_001_221_110,
                 proof: None,
             },
             TreeNode {
-                claimant: stake_account_0,
-                claim_status_pubkey: claim_statuses[1].0,
-                claim_status_bump: claim_statuses[1].1,
-                staker_pubkey: Pubkey::default(),
-                withdrawer_pubkey: Pubkey::default(),
-                amount: 149_992,
+                claimant: staker_account_0, // Use staker_account instead of stake_account
+                claim_status_pubkey: claim_statuses[2].0,
+                claim_status_bump: claim_statuses[2].1,
+                staker_pubkey: staker_account_0,
+                withdrawer_pubkey: staker_account_0,
+                amount: 145_447, // Update to match actual amount
                 proof: None,
             },
             TreeNode {
-                claimant: stake_account_1,
-                claim_status_pubkey: claim_statuses[2].0,
-                claim_status_bump: claim_statuses[2].1,
-                staker_pubkey: Pubkey::default(),
-                withdrawer_pubkey: Pubkey::default(),
-                amount: 174_858,
+                claimant: staker_account_1, // Use staker_account instead of stake_account
+                claim_status_pubkey: claim_statuses[3].0,
+                claim_status_bump: claim_statuses[3].1,
+                staker_pubkey: staker_account_1,
+                withdrawer_pubkey: staker_account_1,
+                amount: 169_559, // Update to match actual amount
                 proof: None,
-            },
+            }
         ];
-        let hashed_nodes: Vec<[u8; 32]> = tree_nodes.iter().map(|n| n.hash().to_bytes()).collect();
+
+        let hashed_nodes: Vec<[u8; 32]> = tree_nodes
+            .iter()
+            .map(|n| n.hash().to_bytes())
+            .collect();
         let merkle_tree = MerkleTree::new(&hashed_nodes[..], true);
         let gmt_0 = GeneratedMerkleTree {
             tip_distribution_account: tda_0,
@@ -1074,42 +1090,52 @@ mod tests {
             tree_nodes,
             max_total_claim: stake_meta_collection.stake_metas[0]
                 .clone()
-                .maybe_tip_distribution_meta
-                .unwrap()
-                .total_tips,
-            max_num_nodes: 3,
+                .maybe_tip_distribution_meta.unwrap().total_tips,
+            max_num_nodes: 4,
         };
 
         let tree_nodes = vec![
             TreeNode {
-                claimant: validator_vote_account_1,
-                claim_status_pubkey: claim_statuses[3].0,
-                claim_status_bump: claim_statuses[3].1,
+                claimant: protocol_fee_recipient,
+                claim_status_pubkey: claim_statuses[4].0,
+                claim_status_bump: claim_statuses[4].1,
+                staker_pubkey: Pubkey::default(),
+                withdrawer_pubkey: Pubkey::default(),
+                amount: 57_003_663_339,
+                proof: None,
+            },
+            TreeNode {
+                claimant: validator_id_1,
+                claim_status_pubkey: claim_statuses[5].0,
+                claim_status_bump: claim_statuses[5].1,
                 staker_pubkey: Pubkey::default(),
                 withdrawer_pubkey: Pubkey::default(),
                 amount: 38_002_442_226,
                 proof: None,
             },
             TreeNode {
-                claimant: stake_account_2,
-                claim_status_pubkey: claim_statuses[4].0,
-                claim_status_bump: claim_statuses[4].1,
-                staker_pubkey: Pubkey::default(),
-                withdrawer_pubkey: Pubkey::default(),
-                amount: 163_000,
+                claimant: staker_account_2,
+                claim_status_pubkey: claim_statuses[6].0,
+                claim_status_bump: claim_statuses[6].1,
+                staker_pubkey: staker_account_2,
+                withdrawer_pubkey: staker_account_2,
+                amount: 158_011, // Updated from 163_000
                 proof: None,
             },
             TreeNode {
-                claimant: stake_account_3,
-                claim_status_pubkey: claim_statuses[5].0,
-                claim_status_bump: claim_statuses[5].1,
-                staker_pubkey: Pubkey::default(),
-                withdrawer_pubkey: Pubkey::default(),
-                amount: 508_762_900,
+                claimant: staker_account_3,
+                claim_status_pubkey: claim_statuses[7].0,
+                claim_status_bump: claim_statuses[7].1,
+                staker_pubkey: staker_account_3,
+                withdrawer_pubkey: staker_account_3,
+                amount: 493_188_526, // Updated from 508_762_900
                 proof: None,
-            },
+            }
         ];
-        let hashed_nodes: Vec<[u8; 32]> = tree_nodes.iter().map(|n| n.hash().to_bytes()).collect();
+        let hashed_nodes: Vec<[u8; 32]> = tree_nodes
+            .iter()
+            .map(|n| n.hash().to_bytes())
+            .collect();
         let merkle_tree = MerkleTree::new(&hashed_nodes[..], true);
         let gmt_1 = GeneratedMerkleTree {
             tip_distribution_account: tda_1,
@@ -1118,44 +1144,39 @@ mod tests {
             tree_nodes,
             max_total_claim: stake_meta_collection.stake_metas[1]
                 .clone()
-                .maybe_tip_distribution_meta
-                .unwrap()
-                .total_tips,
-            max_num_nodes: 3,
+                .maybe_tip_distribution_meta.unwrap().total_tips,
+            max_num_nodes: 4,
         };
 
         let expected_generated_merkle_trees = vec![gmt_0, gmt_1];
         let actual_generated_merkle_trees = merkle_tree_collection.generated_merkle_trees;
+        expected_generated_merkle_trees.iter().for_each(|expected_gmt| {
+            let actual_gmt = actual_generated_merkle_trees
+                .iter()
+                .find(|gmt| gmt.tip_distribution_account == expected_gmt.tip_distribution_account)
+                .unwrap();
 
-        expected_generated_merkle_trees
-            .iter()
-            .for_each(|expected_gmt| {
-                let actual_gmt = actual_generated_merkle_trees
+            println!("Expected nodes:");
+            for node in &expected_gmt.tree_nodes {
+                println!("Claimant: {}, Amount: {}", node.claimant, node.amount);
+            }
+            println!("\nActual nodes:");
+            for node in &actual_gmt.tree_nodes {
+                println!("Claimant: {}, Amount: {}", node.claimant, node.amount);
+            }
+
+            assert_eq!(expected_gmt.max_num_nodes, actual_gmt.max_num_nodes);
+            assert_eq!(expected_gmt.max_total_claim, actual_gmt.max_total_claim);
+            assert_eq!(expected_gmt.tip_distribution_account, actual_gmt.tip_distribution_account);
+            assert_eq!(expected_gmt.tree_nodes.len(), actual_gmt.tree_nodes.len());
+            expected_gmt.tree_nodes.iter().for_each(|expected_tree_node| {
+                let actual_tree_node = actual_gmt.tree_nodes
                     .iter()
-                    .find(|gmt| {
-                        gmt.tip_distribution_account == expected_gmt.tip_distribution_account
-                    })
+                    .find(|tree_node| tree_node.claimant == expected_tree_node.claimant)
                     .unwrap();
-
-                assert_eq!(expected_gmt.max_num_nodes, actual_gmt.max_num_nodes);
-                assert_eq!(expected_gmt.max_total_claim, actual_gmt.max_total_claim);
-                assert_eq!(
-                    expected_gmt.tip_distribution_account,
-                    actual_gmt.tip_distribution_account
-                );
-                assert_eq!(expected_gmt.tree_nodes.len(), actual_gmt.tree_nodes.len());
-                expected_gmt
-                    .tree_nodes
-                    .iter()
-                    .for_each(|expected_tree_node| {
-                        let actual_tree_node = actual_gmt
-                            .tree_nodes
-                            .iter()
-                            .find(|tree_node| tree_node.claimant == expected_tree_node.claimant)
-                            .unwrap();
-                        assert_eq!(expected_tree_node.amount, actual_tree_node.amount);
-                    });
-                assert_eq!(expected_gmt.merkle_root, actual_gmt.merkle_root);
+                assert_eq!(expected_tree_node.amount, actual_tree_node.amount);
             });
+            assert_eq!(expected_gmt.merkle_root, actual_gmt.merkle_root);
+        });
     }
 }

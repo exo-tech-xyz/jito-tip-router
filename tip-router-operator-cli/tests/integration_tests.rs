@@ -226,7 +226,7 @@ pub enum MerkleTreeTestError {
 
     #[error(transparent)] MerkleRootGeneratorError(
         #[from] merkle_root_generator_workflow::MerkleRootGeneratorError,
-    ), // Add this
+    ),
 
     #[error("Other error: {0}")] Other(Box<dyn std::error::Error>),
 }
@@ -258,7 +258,7 @@ async fn test_merkle_tree_generation() -> Result<(), MerkleTreeTestError> {
     let account = AccountSharedData::new(rent.minimum_balance(space), space, &TIP_DISTRIBUTION_ID);
 
     let mut config_data = vec![0u8; space];
-    config.serialize(&mut config_data);
+    let _ =config.serialize(&mut config_data);
 
     // Create account with data
     let mut account = account;
