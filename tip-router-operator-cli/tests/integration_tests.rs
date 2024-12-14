@@ -39,6 +39,7 @@ use {
     thiserror::Error,
     solana_sdk::account::{ Account, AccountSharedData },
     jito_tip_distribution::state::Config,
+    anchor_lang::prelude::AnchorSerialize,
 };
 
 struct TestContext {
@@ -51,37 +52,6 @@ struct TestContext {
     pub temp_dir: TempDir,
     pub output_dir: PathBuf,
 }
-
-// struct TestEllipsisClient {
-//     banks_client: BanksClient,
-//     payer: Keypair,
-//     rpc_client: RpcClient,
-// }
-
-// #[async_trait]
-// impl EllipsisClient for TestEllipsisClient {
-//     fn get_rpc(&self) -> &RpcClient {
-//         &self.rpc_client
-//     }
-
-//     fn get_payer(&self) -> &Keypair {
-//         &self.payer
-//     }
-
-//     async fn send_and_confirm_transaction(&self, transaction: Transaction) -> Result<(), Box<dyn std::error::Error>> {
-//         self.banks_client.process_transaction(transaction).await?;
-//         Ok(())
-//     }
-// }
-
-// impl From<TestEllipsisClient> for EllipsisClient {
-//     fn from(test_client: TestEllipsisClient) -> Self {
-//         EllipsisClient::from_rpc(
-//             test_client.rpc_client,
-//             &test_client.payer
-//         ).expect("Failed to create EllipsisClient from TestEllipsisClient")
-//     }
-// }
 
 impl TestContext {
     async fn new() -> Result<Self, Box<dyn std::error::Error>> {
@@ -248,18 +218,9 @@ async fn test_merkle_tree_generation() -> Result<(), MerkleTreeTestError> {
 
     // Create account data
     let account = AccountSharedData::new(rent.minimum_balance(space), space, &TIP_DISTRIBUTION_ID);
-
-    // Set up config data
+    
     let mut config_data = vec![0u8; space];
-    config.authority
-        .to_bytes()
-        .iter()
-        .enumerate()
-        .for_each(|(i, byte)| {
-            config_data[i] = *byte;
-        });
-    config_data[32..34].copy_from_slice(&config.protocol_fee_bps.to_le_bytes());
-    config_data[34] = config.bump;
+    config.serialize(&mut config_data);
 
     // Create account with data
     let mut account = account;
@@ -275,11 +236,6 @@ async fn test_merkle_tree_generation() -> Result<(), MerkleTreeTestError> {
     let validator_fee_amount = (((TOTAL_TIPS as u128) * (VALIDATOR_FEE_BPS as u128)) /
         10000u128) as u64;
     let remaining_tips = TOTAL_TIPS - protocol_fee_amount - validator_fee_amount;
-
-    // let ellipsis_client = EllipsisClient::from_banks(
-    //     &test_context.context.banks_client,
-    //     &test_context.payer,
-    // ).await.map_err(|e| MerkleTreeTestError::Other(Box::new(e)))?;
 
     // Then use it in generate_merkle_root
     let merkle_tree_coll = merkle_root_generator_workflow::generate_merkle_root(
