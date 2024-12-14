@@ -27,6 +27,7 @@ use {
         Cli,
         Commands,
         process_epoch,
+        TipAccountConfig,
     },
     jito_tip_distribution::{ self, ID as TIP_DISTRIBUTION_ID },
     jito_tip_payment::{ self, ID as TIP_PAYMENT_ID },
@@ -34,8 +35,10 @@ use {
     solana_client::rpc_client::RpcClient,
     solana_sdk::genesis_config::GenesisConfig,
     self::snapshot_creator::MockSnapshotCreator,
-    solana_program::stake::state::StakeState
-    // solana_client::mock_sender::MockSender,
+    solana_program::stake::state::StakeState,
+    thiserror::Error,
+    solana_sdk::account::{Account, AccountSharedData},
+    jito_tip_distribution::state::Config,
 };
 
 
@@ -163,18 +166,18 @@ impl TestContext {
         })
     }
 
-    fn create_test_stake_meta(&self) -> StakeMetaCollection {
+    fn create_test_stake_meta(&self, total_tips: u64, validator_fee_bps: u16) -> StakeMetaCollection {
         let stake_meta = StakeMeta {
             validator_vote_account: self.vote_account.pubkey(),
-            validator_node_pubkey: self.stake_accounts[0].pubkey(),  // Use first stake account
+            validator_node_pubkey: self.stake_accounts[0].pubkey(),
             maybe_tip_distribution_meta: Some(TipDistributionMeta {
-                total_tips: 1_000_000,
+                total_tips,
                 merkle_root_upload_authority: self.payer.pubkey(),
                 tip_distribution_pubkey: self.tip_distribution_program_id,
-                validator_fee_bps: 1000,
+                validator_fee_bps,
             }),
             delegations: vec![Delegation {
-                stake_account_pubkey: self.stake_accounts[0].pubkey(),  // Use first stake account
+                stake_account_pubkey: self.stake_accounts[0].pubkey(),
                 staker_pubkey: self.payer.pubkey(),
                 withdrawer_pubkey: self.payer.pubkey(),
                 lamports_delegated: 1_000_000,
@@ -198,4 +201,126 @@ impl TestContext {
         self.context.last_blockhash = self.context.banks_client.get_latest_blockhash().await?;
         Ok(())
     }
+}
+
+
+#[derive(Error, Debug)]
+pub enum MerkleTreeTestError {
+    #[error(transparent)]
+    ProgramTestError(#[from] ProgramTestError),
+
+    #[error(transparent)]
+    IoError(#[from] std::io::Error),
+
+    #[error(transparent)]
+    BanksClientError(#[from] BanksClientError),
+
+    #[error("Other error: {0}")]
+    Other(Box<dyn std::error::Error>),
+}
+
+#[tokio::test]
+async fn test_merkle_tree_generation() -> Result<(), MerkleTreeTestError> {
+    // Constants
+    const PROTOCOL_FEE_BPS: u16 = 500;
+    const VALIDATOR_FEE_BPS: u16 = 1000;
+    const TOTAL_TIPS: u64 = 1_000_000;
+
+    let mut test_context = TestContext::new().await.map_err(|e| MerkleTreeTestError::Other(e))?;
+
+    // Get config PDA
+    let (config_pda, bump) = Pubkey::find_program_address(
+        &[b"config"],
+        &TIP_DISTRIBUTION_ID,
+    );
+
+    // Create config account with protocol fee
+    let config = TipAccountConfig {
+        authority: test_context.payer.pubkey(),
+        protocol_fee_bps: PROTOCOL_FEE_BPS,  // 5% protocol fee
+        bump,
+    };
+
+    // Create config account
+    let space = 32 + 2 + 1;  // pubkey (32) + u16 (2) + u8 (1)
+    let rent = test_context.context.banks_client.get_rent().await?;
+    
+    // Create account data
+    let account = AccountSharedData::new(
+        rent.minimum_balance(space),
+        space,
+        &TIP_DISTRIBUTION_ID,
+    );
+
+    // Set up config data
+    let mut config_data = vec![0u8; space];
+    config.authority.to_bytes().iter().enumerate().for_each(|(i, byte)| config_data[i] = *byte);
+    config_data[32..34].copy_from_slice(&config.protocol_fee_bps.to_le_bytes());
+    config_data[34] = config.bump;
+
+    // Create account with data
+    let mut account = account;
+    account.set_data(config_data);
+
+    // Set the account
+    test_context.context.set_account(&config_pda, &account);
+
+    
+    let stake_meta_collection = test_context.create_test_stake_meta(TOTAL_TIPS, VALIDATOR_FEE_BPS);
+
+    let protocol_fee_amount = (TOTAL_TIPS as u128 * PROTOCOL_FEE_BPS as u128 / 10000u128) as u64;
+    let validator_fee_amount = (TOTAL_TIPS as u128 * VALIDATOR_FEE_BPS as u128 / 10000u128) as u64;
+    let remaining_tips = TOTAL_TIPS - protocol_fee_amount - validator_fee_amount;
+
+    let merkle_tree_coll = merkle_root_generator_workflow::generate_merkle_root(
+        stake_meta_collection.clone(),
+        &test_context.context.banks_client,
+    ).await.map_err(|e| MerkleTreeTestError::Other(Box::new(e)))?;
+
+    let generated_tree = &merkle_tree_coll.generated_merkle_trees[0];
+    let nodes = &generated_tree.tree_nodes;
+
+    // Verify protocol fee node
+    let protocol_fee_recipient = config_pda;  // The config PDA is the protocol fee recipient
+
+    let protocol_fee_node = nodes.iter()
+        .find(|node| node.claimant == protocol_fee_recipient)
+        .expect("Protocol fee node should exist");
+    assert_eq!(protocol_fee_node.amount, protocol_fee_amount);
+
+    // Verify validator fee node
+    let validator_fee_node = nodes.iter()
+        .find(|node| node.claimant == stake_meta_collection.stake_metas[0].validator_node_pubkey)
+        .expect("Validator fee node should exist");
+    assert_eq!(validator_fee_node.amount, validator_fee_amount);
+
+    // Verify delegator nodes
+    for delegation in &stake_meta_collection.stake_metas[0].delegations {
+        let delegator_share = (remaining_tips as u128 * delegation.lamports_delegated as u128 
+            / stake_meta_collection.stake_metas[0].total_delegated as u128) as u64;
+
+        let delegator_node = nodes.iter()
+            .find(|node| node.claimant == delegation.staker_pubkey)
+            .expect("Delegator node should exist");
+        assert_eq!(
+            delegator_node.amount,
+            delegator_share,
+            "Delegator share mismatch for stake amount {}",
+            delegation.lamports_delegated
+        );
+    }
+
+    // Verify node structure
+    for node in nodes {
+        assert_ne!(node.claimant, Pubkey::default(), "Node claimant should not be default");
+        assert_ne!(
+            node.claim_status_pubkey,
+            Pubkey::default(),
+            "Node claim status should not be default"
+        );
+        assert!(node.amount > 0, "Node amount should be greater than 0");
+        assert!(node.proof.is_some(), "Node should have a proof");
+    }
+
+    Ok(())
 }
