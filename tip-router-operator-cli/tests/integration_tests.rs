@@ -234,7 +234,7 @@ pub enum MerkleTreeTestError {
 #[tokio::test]
 async fn test_merkle_tree_generation() -> Result<(), MerkleTreeTestError> {
     // Constants
-    const PROTOCOL_FEE_BPS: u16 = 500;
+    const PROTOCOL_FEE_BPS: u16 = 300;
     const VALIDATOR_FEE_BPS: u16 = 1000;
     const TOTAL_TIPS: u64 = 1_000_000;
 
@@ -282,7 +282,7 @@ async fn test_merkle_tree_generation() -> Result<(), MerkleTreeTestError> {
 
     let generated_tree = &merkle_tree_coll.generated_merkle_trees[0];
 
-    assert_eq!(generated_tree.merkle_root.to_string(), "D1Vbm4zwXbk5SUqLJdfuzKMjADq6u4cAZt6jpXz6j8gs");
+    assert_eq!(generated_tree.merkle_root.to_string(), "H2QevVyboCTYi3x5NtS57k73m1ohMt6Rpfb5we4zDXKH");
 
     let nodes = &generated_tree.tree_nodes;
 

@@ -354,7 +354,7 @@ impl TreeNode {
     ) -> Result<Option<Vec<TreeNode>>, MerkleRootGeneratorError> {
         if let Some(tip_distribution_meta) = stake_meta.maybe_tip_distribution_meta.as_ref() {
             // Calculate protocol fee (5%)
-            const PROTOCOL_FEE_BPS: u16 = 500;
+            const PROTOCOL_FEE_BPS: u16 = 300;
             let protocol_fee_amount = (tip_distribution_meta.total_tips as u128)
                 .checked_mul(PROTOCOL_FEE_BPS as u128)
                 .unwrap()
@@ -865,7 +865,7 @@ pub fn read_json_from_file<T>(path: &PathBuf) -> serde_json::Result<T> where T: 
 
 #[cfg(test)]
 mod tests {
-    use ::{ super::*, jito_tip_distribution::merkle_proof };
+    use { super::*, jito_tip_distribution::merkle_proof };
 
     #[test]
     fn test_merkle_tree_verify() {
