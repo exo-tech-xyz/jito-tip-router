@@ -207,26 +207,18 @@ mod tests {
 
     use solana_program::pubkey::Pubkey;
     use solana_sdk::{
-        signature::{EncodableKey, Keypair},
+        signature::Keypair,
         signer::Signer,
     };
     use solana_program::hash::Hash;
-    use crate::{
-        generated_merkle_tree::{GeneratedMerkleTree, GeneratedMerkleTreeCollection},
-    };
-    use crate::generated_merkle_tree::{self, TreeNode as GeneratedTreeNode};  // Updated import
+    use crate::generated_merkle_tree::{GeneratedMerkleTree, GeneratedMerkleTreeCollection};
+    use crate::generated_merkle_tree::{self};  // Updated import
 
 
     use super::*;
 
     pub fn new_test_key() -> Pubkey {
-        let kp = Keypair::new();
-        let out_path = format!("./test_keys/{}.json", kp.pubkey());
-
-        kp.write_to_file(out_path)
-            .expect("Failed to write to signer");
-
-        kp.pubkey()
+        Keypair::new().pubkey()
     }
 
     #[test]
