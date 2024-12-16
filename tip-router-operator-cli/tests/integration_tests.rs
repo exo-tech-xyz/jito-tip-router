@@ -206,6 +206,8 @@ impl TestContext {
 }
 
 #[tokio::test]
+async fn test_up_to_cast_vote() -> Result<(), Box<dyn std::error::Error>> {}
+#[tokio::test]
 async fn test_merkle_tree_generation() -> Result<(), Box<dyn std::error::Error>> {
     // Constants
     const PROTOCOL_FEE_BPS: u16 = 300;
