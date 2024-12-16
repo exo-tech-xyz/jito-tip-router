@@ -132,6 +132,7 @@ impl TreeNode {
         protocol_fee_bps: u16,
         tip_distribution_program_id: &Pubkey,
     ) -> Result<Option<Vec<Self>>, MerkleRootGeneratorError> {
+        
         if let Some(tip_distribution_meta) = stake_meta.maybe_tip_distribution_meta.as_ref() {
             let protocol_fee_amount = u128::div_ceil(
                 tip_distribution_meta.total_tips as u128 * protocol_fee_bps as u128,
