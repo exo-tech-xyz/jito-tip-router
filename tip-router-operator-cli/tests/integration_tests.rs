@@ -21,6 +21,7 @@ use meta_merkle_tree::{
 use solana_client::rpc_client::RpcClient;
 use solana_program::stake::state::{StakeState, StakeStateV2};
 use solana_program_test::*;
+use solana_sdk::bs58;
 use solana_sdk::{
     account::{Account, AccountSharedData},
     genesis_config::GenesisConfig,
@@ -34,7 +35,6 @@ use thiserror::Error;
 use tip_router_operator_cli::{
     process_epoch, stake_meta_generator::generate_stake_meta, Cli, Commands, TipAccountConfig,
 };
-use solana_sdk::bs58;
 struct TestContext {
     pub context: ProgramTestContext,
     pub tip_distribution_program_id: Pubkey,
@@ -228,12 +228,8 @@ async fn test_up_to_cast_vote() -> Result<(), Box<dyn std::error::Error>> {
         tip_payment_program_id,
     )?;
 
- 
     // Verify the merkle root, meta_merkle_tree.merkle_root != [0u8; 32]
-    assert!(
-        "9320239uruj23jblahblah",
-        "Meta merkle tree has zero root"
-    );
+    assert!("9320239uruj23jblahblah", "Meta merkle tree has zero root");
 
     Ok(())
 }
