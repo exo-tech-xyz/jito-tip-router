@@ -33,8 +33,8 @@ use solana_sdk::{
 use tempfile::TempDir;
 use thiserror::Error;
 use tip_router_operator_cli::{
-    process_epoch, stake_meta_generator::generate_stake_meta, Cli, Commands, TipAccountConfig,
-    ledger_utils::get_bank_from_ledger
+    ledger_utils::get_bank_from_ledger, process_epoch, stake_meta_generator::generate_stake_meta,
+    Cli, Commands, TipAccountConfig,
 };
 struct TestContext {
     pub context: ProgramTestContext,
