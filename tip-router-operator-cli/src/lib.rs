@@ -66,9 +66,7 @@ use solana_sdk::{
 use solana_transaction_status::TransactionStatus;
 use tokio::{sync::Semaphore, time::sleep};
 
-use crate::{
-    stake_meta_generator_workflow::StakeMetaGeneratorError::CheckedMathError,
-};
+use crate::stake_meta_generator_workflow::StakeMetaGeneratorError::CheckedMathError;
 
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct GeneratedMerkleTreeCollection {

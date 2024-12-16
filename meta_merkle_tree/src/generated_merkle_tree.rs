@@ -5,7 +5,7 @@ use jito_tip_distribution::{
     program::JitoTipDistribution,
     state::{ClaimStatus, TipDistributionAccount},
 };
-use jito_tip_distribution_sdk::{CLAIM_STATUS_SEED};
+use jito_tip_distribution_sdk::CLAIM_STATUS_SEED;
 use jito_tip_payment::CONFIG_ACCOUNT_SEED;
 use log::info;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -132,7 +132,6 @@ impl TreeNode {
         protocol_fee_bps: u16,
         tip_distribution_program_id: &Pubkey,
     ) -> Result<Option<Vec<Self>>, MerkleRootGeneratorError> {
-        
         if let Some(tip_distribution_meta) = stake_meta.maybe_tip_distribution_meta.as_ref() {
             let protocol_fee_amount = u128::div_ceil(
                 tip_distribution_meta.total_tips as u128 * protocol_fee_bps as u128,
