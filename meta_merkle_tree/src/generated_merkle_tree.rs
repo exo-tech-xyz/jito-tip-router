@@ -116,16 +116,27 @@ impl GeneratedMerkleTreeCollection {
 
 #[derive(Clone, Eq, Debug, Hash, PartialEq, Deserialize, Serialize)]
 pub struct TreeNode {
+    /// The stake account entitled to redeem.
     #[serde(with = "pubkey_string_conversion")]
     pub claimant: Pubkey,
+
+    /// Pubkey of the ClaimStatus PDA account, this account should be closed to reclaim rent.
     #[serde(with = "pubkey_string_conversion")]
     pub claim_status_pubkey: Pubkey,
+
+    /// Bump of the ClaimStatus PDA account
     pub claim_status_bump: u8,
+
     #[serde(with = "pubkey_string_conversion")]
     pub staker_pubkey: Pubkey,
+
     #[serde(with = "pubkey_string_conversion")]
     pub withdrawer_pubkey: Pubkey,
+
+    /// The amount this account is entitled to.
     pub amount: u64,
+
+    /// The proof associated with this TreeNode
     pub proof: Option<Vec<[u8; 32]>>,
 }
 
@@ -235,7 +246,7 @@ impl TreeNode {
                             ],
                             &JitoTipDistribution::id(),
                         );
-                        Ok(TreeNode {
+                        Ok(Self {
                             claimant: delegation.staker_pubkey,
                             claim_status_pubkey,
                             claim_status_bump,
