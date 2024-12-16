@@ -15,7 +15,6 @@ use solana_program::{
     pubkey::Pubkey,
 };
 use thiserror::Error;
-
 use crate::{merkle_tree::MerkleTree, utils::get_proof};
 
 #[derive(Error, Debug)]
@@ -222,7 +221,7 @@ impl TreeNode {
                         let reward_amount = u64::try_from(reward_amount)
                             .map_err(|_| MerkleRootGeneratorError::CheckedMathError)?;
 
-                        println!(
+                        info!(
                             "Delegation: {}, Amount Delegated: {}, Reward Amount: {}",
                             delegation.staker_pubkey, amount_delegated, reward_amount
                         );

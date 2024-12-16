@@ -8,7 +8,7 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 use solana_program::{hash::hashv, pubkey::Pubkey};
-
+use log::info;
 use crate::{
     error::MerkleTreeError::{self, MerkleValidationError},
     generated_merkle_tree::GeneratedMerkleTreeCollection,
@@ -61,7 +61,7 @@ impl MetaMerkleTree {
             tree_nodes,
         };
 
-        println!(
+        info!(
             "created merkle tree with {} nodes and max total claim of {}",
             tree.num_nodes, tree.num_nodes
         );
