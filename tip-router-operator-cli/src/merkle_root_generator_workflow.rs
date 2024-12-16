@@ -1,12 +1,12 @@
 use {
-    meta_merkle_tree::{ GeneratedMerkleTreeCollection, StakeMetaCollection, MerkleRootGeneratorError },
     log::*,
+    meta_merkle_tree::generated_merkle_tree::{
+        GeneratedMerkleTreeCollection, MerkleRootGeneratorError, StakeMetaCollection,
+    },
     std::fmt::Debug,
     thiserror::Error,
     // ellipsis_client::EllipsisClient,
 };
-
-#[derive(Error, Debug)]
 
 pub async fn generate_merkle_root(
     stake_meta_coll: StakeMetaCollection,
@@ -15,7 +15,8 @@ pub async fn generate_merkle_root(
     let merkle_tree_coll = GeneratedMerkleTreeCollection::new_from_stake_meta_collection(
         stake_meta_coll,
         protocol_fee_bps,
-    ).await?;
+    )
+    .await?;
 
     Ok(merkle_tree_coll)
 }

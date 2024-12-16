@@ -2,83 +2,72 @@ pub mod claim_mev_workflow;
 pub mod merkle_root_generator_workflow;
 pub mod merkle_root_upload_workflow;
 pub mod reclaim_rent_workflow;
-pub mod stake_meta_generator_workflow;
 pub mod snapshot;
-pub use crate::cli::{ Cli, Commands };
+pub mod stake_meta_generator_workflow;
+pub use crate::cli::{Cli, Commands};
 pub mod cli;
 pub use crate::process_epoch::process_epoch;
 pub mod process_epoch;
 
-use {
-    crate::{
-        merkle_root_generator_workflow::MerkleRootGeneratorError,
-        stake_meta_generator_workflow::StakeMetaGeneratorError::CheckedMathError,
+use std::{
+    collections::{HashMap, HashSet},
+    fs::File,
+    io::BufReader,
+    path::PathBuf,
+    result::Result,
+    sync::Arc,
+    time::{Duration, Instant},
+};
+
+use anchor_lang::{prelude::*, Id};
+use ellipsis_client::EllipsisClient;
+use jito_tip_distribution::{
+    program::JitoTipDistribution,
+    state::{ClaimStatus, TipDistributionAccount},
+};
+use jito_tip_payment::{
+    Config, CONFIG_ACCOUNT_SEED, TIP_ACCOUNT_SEED_0, TIP_ACCOUNT_SEED_1, TIP_ACCOUNT_SEED_2,
+    TIP_ACCOUNT_SEED_3, TIP_ACCOUNT_SEED_4, TIP_ACCOUNT_SEED_5, TIP_ACCOUNT_SEED_6,
+    TIP_ACCOUNT_SEED_7,
+};
+use log::{error, *};
+use meta_merkle_tree::generated_merkle_tree::TreeNode;
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use solana_client::{
+    nonblocking::rpc_client::RpcClient,
+    rpc_client::{RpcClient as SyncRpcClient, SerializableTransaction},
+};
+use solana_merkle_tree::MerkleTree;
+use solana_metrics::{datapoint_error, datapoint_warn};
+use solana_program::{
+    instruction::InstructionError,
+    rent::{ACCOUNT_STORAGE_OVERHEAD, DEFAULT_EXEMPTION_THRESHOLD, DEFAULT_LAMPORTS_PER_BYTE_YEAR},
+};
+use solana_rpc_client_api::{
+    client_error::{Error, ErrorKind},
+    config::RpcSendTransactionConfig,
+    request::{RpcError, RpcResponseErrorData, MAX_MULTIPLE_ACCOUNTS},
+    response::RpcSimulateTransactionResult,
+};
+use solana_runtime::bank::Bank;
+use solana_sdk::{
+    account::{Account, AccountSharedData, ReadableAccount},
+    clock::Slot,
+    commitment_config::{CommitmentConfig, CommitmentLevel},
+    hash::{Hash, Hasher},
+    pubkey::Pubkey,
+    signature::{Keypair, Signature},
+    stake_history::Epoch,
+    transaction::{
+        Transaction,
+        TransactionError::{self},
     },
-    anchor_lang::Id,
-    jito_tip_distribution::{
-        program::JitoTipDistribution,
-        state::{ ClaimStatus, TipDistributionAccount },
-    },
-    jito_tip_payment::{
-        Config,
-        CONFIG_ACCOUNT_SEED,
-        TIP_ACCOUNT_SEED_0,
-        TIP_ACCOUNT_SEED_1,
-        TIP_ACCOUNT_SEED_2,
-        TIP_ACCOUNT_SEED_3,
-        TIP_ACCOUNT_SEED_4,
-        TIP_ACCOUNT_SEED_5,
-        TIP_ACCOUNT_SEED_6,
-        TIP_ACCOUNT_SEED_7,
-    },
-    log::*,
-    serde::{ de::DeserializeOwned, Deserialize, Serialize },
-    solana_client::{
-        nonblocking::rpc_client::RpcClient,
-        rpc_client::{ RpcClient as SyncRpcClient, SerializableTransaction },
-    },
-    solana_merkle_tree::MerkleTree,
-    solana_metrics::{ datapoint_error, datapoint_warn },
-    solana_program::{
-        instruction::InstructionError,
-        rent::{
-            ACCOUNT_STORAGE_OVERHEAD,
-            DEFAULT_EXEMPTION_THRESHOLD,
-            DEFAULT_LAMPORTS_PER_BYTE_YEAR,
-        },
-    },
-    solana_rpc_client_api::{
-        client_error::{ Error, ErrorKind },
-        config::RpcSendTransactionConfig,
-        request::{ RpcError, RpcResponseErrorData, MAX_MULTIPLE_ACCOUNTS },
-        response::RpcSimulateTransactionResult,
-    },
-    solana_sdk::{
-        account::{ Account, AccountSharedData, ReadableAccount },
-        clock::Slot,
-        commitment_config::{ CommitmentConfig, CommitmentLevel },
-        hash::{ Hash, Hasher },
-        pubkey::Pubkey,
-        signature::{ Keypair, Signature },
-        stake_history::Epoch,
-        transaction::{ Transaction, TransactionError::{ self } },
-    },
-    solana_transaction_status::TransactionStatus,
-    std::{
-        collections::{ HashMap, HashSet },
-        fs::File,
-        io::BufReader,
-        path::PathBuf,
-        sync::Arc,
-        time::{ Duration, Instant },
-    },
-    tokio::{ sync::Semaphore, time::sleep },
-    solana_runtime::bank::Bank,
-    log::error,
-    anchor_lang::prelude::*,
-    std::result::Result,
-    ellipsis_client::EllipsisClient,
-    meta_merkle_tree::generated_merkle_tree::TreeNode
+};
+use solana_transaction_status::TransactionStatus;
+use tokio::{sync::Semaphore, time::sleep};
+
+use crate::{
+    stake_meta_generator_workflow::StakeMetaGeneratorError::CheckedMathError,
 };
 
 #[derive(Clone, Deserialize, Serialize, Debug)]
@@ -116,14 +105,13 @@ pub struct TipAccountConfig {
 fn emit_inconsistent_tree_node_amount_dp(
     tree_nodes: &[TreeNode],
     tip_distribution_account: &Pubkey,
-    rpc_client: &SyncRpcClient
+    rpc_client: &SyncRpcClient,
 ) {
-    let actual_claims: u64 = tree_nodes
-        .iter()
-        .map(|t| t.amount)
-        .sum();
+    let actual_claims: u64 = tree_nodes.iter().map(|t| t.amount).sum();
     let tda = rpc_client.get_account(tip_distribution_account).unwrap();
-    let min_rent = rpc_client.get_minimum_balance_for_rent_exemption(tda.data.len()).unwrap();
+    let min_rent = rpc_client
+        .get_minimum_balance_for_rent_exemption(tda.data.len())
+        .unwrap();
 
     let expected_claims = tda.lamports.checked_sub(min_rent).unwrap();
     if actual_claims == expected_claims {
@@ -177,14 +165,7 @@ fn derive_tip_payment_pubkeys(program_id: &Pubkey) -> TipPaymentPubkeys {
     TipPaymentPubkeys {
         config_pda,
         tip_pdas: vec![
-            tip_pda_0,
-            tip_pda_1,
-            tip_pda_2,
-            tip_pda_3,
-            tip_pda_4,
-            tip_pda_5,
-            tip_pda_6,
-            tip_pda_7
+            tip_pda_0, tip_pda_1, tip_pda_2, tip_pda_3, tip_pda_4, tip_pda_5, tip_pda_6, tip_pda_7,
         ],
     }
 }
@@ -231,7 +212,8 @@ pub struct StakeMeta {
 
 impl Ord for StakeMeta {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.validator_vote_account.cmp(&other.validator_vote_account)
+        self.validator_vote_account
+            .cmp(&other.validator_vote_account)
     }
 }
 
@@ -261,16 +243,21 @@ impl TipDistributionMeta {
     fn from_tda_wrapper(
         tda_wrapper: TipDistributionAccountWrapper,
         // The amount that will be left remaining in the tda to maintain rent exemption status.
-        rent_exempt_amount: u64
+        rent_exempt_amount: u64,
     ) -> Result<Self, stake_meta_generator_workflow::StakeMetaGeneratorError> {
         Ok(TipDistributionMeta {
             tip_distribution_pubkey: tda_wrapper.tip_distribution_pubkey,
-            total_tips: tda_wrapper.account_data
+            total_tips: tda_wrapper
+                .account_data
                 .lamports()
                 .checked_sub(rent_exempt_amount)
                 .ok_or(CheckedMathError)?,
-            validator_fee_bps: tda_wrapper.tip_distribution_account.validator_commission_bps,
-            merkle_root_upload_authority: tda_wrapper.tip_distribution_account.merkle_root_upload_authority,
+            validator_fee_bps: tda_wrapper
+                .tip_distribution_account
+                .validator_commission_bps,
+            merkle_root_upload_authority: tda_wrapper
+                .tip_distribution_account
+                .merkle_root_upload_authority,
         })
     }
 }
@@ -297,14 +284,13 @@ impl Ord for Delegation {
             self.withdrawer_pubkey,
             self.staker_pubkey,
             self.lamports_delegated,
-        ).cmp(
-            &(
+        )
+            .cmp(&(
                 other.stake_account_pubkey,
                 other.withdrawer_pubkey,
                 other.staker_pubkey,
                 other.lamports_delegated,
-            )
-        )
+            ))
     }
 }
 
@@ -325,7 +311,7 @@ pub struct TipDistributionAccountWrapper {
 pub fn derive_tip_distribution_account_address(
     tip_distribution_program_id: &Pubkey,
     vote_pubkey: &Pubkey,
-    epoch: Epoch
+    epoch: Epoch,
 ) -> (Pubkey, u8) {
     Pubkey::find_program_address(
         &[
@@ -333,7 +319,7 @@ pub fn derive_tip_distribution_account_address(
             vote_pubkey.to_bytes().as_ref(),
             epoch.to_le_bytes().as_ref(),
         ],
-        tip_distribution_program_id
+        tip_distribution_program_id,
     )
 }
 
@@ -346,11 +332,14 @@ pub async fn sign_and_send_transactions_with_retries(
     max_concurrent_rpc_get_reqs: usize,
     transactions: Vec<Transaction>,
     txn_send_batch_size: usize,
-    max_loop_duration: Duration
+    max_loop_duration: Duration,
 ) -> (Vec<Transaction>, HashMap<Signature, Error>) {
     let semaphore = Arc::new(Semaphore::new(max_concurrent_rpc_get_reqs));
     let mut errors = HashMap::default();
-    let mut blockhash = rpc_client.get_latest_blockhash().await.expect("fetch latest blockhash");
+    let mut blockhash = rpc_client
+        .get_latest_blockhash()
+        .await
+        .expect("fetch latest blockhash");
     // track unsigned txns
     let mut transactions_to_process = transactions
         .into_iter()
@@ -366,7 +355,10 @@ pub async fn sign_and_send_transactions_with_retries(
         // or (120*0.4s) = 48s to land a tx before it expires
         // if we’re refreshing every 30s, then any txs sent immediately before the refresh would likely expire
         if start.elapsed() > Duration::from_secs(1) {
-            blockhash = rpc_client.get_latest_blockhash().await.expect("fetch latest blockhash");
+            blockhash = rpc_client
+                .get_latest_blockhash()
+                .await
+                .expect("fetch latest blockhash");
         }
         info!(
             "Sending {txn_send_batch_size} of {} transactions to claim mev tips",
@@ -387,13 +379,11 @@ pub async fn sign_and_send_transactions_with_retries(
         let send_res = futures::future::join_all(send_futs).await;
         let new_errors = send_res
             .into_iter()
-            .filter_map(|(hash, txn, result)| {
-                match result {
-                    Err(e) => Some((txn.signatures[0], e)),
-                    Ok(..) => {
-                        let _ = transactions_to_process.remove(&hash);
-                        None
-                    }
+            .filter_map(|(hash, txn, result)| match result {
+                Err(e) => Some((txn.signatures[0], e)),
+                Ok(..) => {
+                    let _ = transactions_to_process.remove(&hash);
+                    None
                 }
             })
             .collect::<HashMap<_, _>>();
@@ -408,7 +398,7 @@ pub async fn send_until_blockhash_expires(
     rpc_client: &RpcClient,
     transactions: Vec<Transaction>,
     blockhash: Hash,
-    keypair: &Arc<Keypair>
+    keypair: &Arc<Keypair>,
 ) -> solana_rpc_client_api::client_error::Result<()> {
     let mut claim_transactions: HashMap<Signature, Transaction> = transactions
         .into_iter()
@@ -420,48 +410,54 @@ pub async fn send_until_blockhash_expires(
 
     let txs_requesting_send = claim_transactions.len();
 
-    while rpc_client.is_blockhash_valid(&blockhash, CommitmentConfig::processed()).await? {
+    while rpc_client
+        .is_blockhash_valid(&blockhash, CommitmentConfig::processed())
+        .await?
+    {
         let mut check_signatures = HashSet::with_capacity(claim_transactions.len());
         let mut already_processed = HashSet::with_capacity(claim_transactions.len());
         let mut is_blockhash_not_found = false;
 
         for (signature, tx) in &claim_transactions {
-            match
-                rpc_client.send_transaction_with_config(tx, RpcSendTransactionConfig {
-                    skip_preflight: false,
-                    preflight_commitment: Some(CommitmentLevel::Confirmed),
-                    max_retries: Some(2),
-                    ..RpcSendTransactionConfig::default()
-                }).await
+            match rpc_client
+                .send_transaction_with_config(
+                    tx,
+                    RpcSendTransactionConfig {
+                        skip_preflight: false,
+                        preflight_commitment: Some(CommitmentLevel::Confirmed),
+                        max_retries: Some(2),
+                        ..RpcSendTransactionConfig::default()
+                    },
+                )
+                .await
             {
                 Ok(_) => {
                     check_signatures.insert(*signature);
                 }
-                Err(e) =>
-                    match e.get_transaction_error() {
-                        Some(TransactionError::BlockhashNotFound) => {
-                            is_blockhash_not_found = true;
-                            break;
-                        }
-                        Some(TransactionError::AlreadyProcessed) => {
-                            already_processed.insert(*tx.get_signature());
-                        }
-                        Some(e) => {
-                            warn!(
-                                "TransactionError sending signature: {} error: {:?} tx: {:?}",
-                                tx.get_signature(),
-                                e,
-                                tx
-                            );
-                        }
-                        None => {
-                            warn!(
-                                "Unknown error sending transaction signature: {} error: {:?}",
-                                tx.get_signature(),
-                                e
-                            );
-                        }
+                Err(e) => match e.get_transaction_error() {
+                    Some(TransactionError::BlockhashNotFound) => {
+                        is_blockhash_not_found = true;
+                        break;
                     }
+                    Some(TransactionError::AlreadyProcessed) => {
+                        already_processed.insert(*tx.get_signature());
+                    }
+                    Some(e) => {
+                        warn!(
+                            "TransactionError sending signature: {} error: {:?} tx: {:?}",
+                            tx.get_signature(),
+                            e,
+                            tx
+                        );
+                    }
+                    None => {
+                        warn!(
+                            "Unknown error sending transaction signature: {} error: {:?}",
+                            tx.get_signature(),
+                            e
+                        );
+                    }
+                },
             }
         }
 
@@ -486,7 +482,9 @@ pub async fn send_until_blockhash_expires(
         }
     }
 
-    let num_landed = txs_requesting_send.checked_sub(claim_transactions.len()).unwrap();
+    let num_landed = txs_requesting_send
+        .checked_sub(claim_transactions.len())
+        .unwrap();
     info!("num_landed: {:?}", num_landed);
 
     Ok(())
@@ -494,7 +492,7 @@ pub async fn send_until_blockhash_expires(
 
 pub async fn get_batched_signatures_statuses(
     rpc_client: &RpcClient,
-    signatures: &[Signature]
+    signatures: &[Signature],
 ) -> solana_rpc_client_api::client_error::Result<Vec<(Signature, Option<TransactionStatus>)>> {
     let mut signature_statuses = Vec::new();
 
@@ -514,7 +512,7 @@ async fn signed_send(
     signer: &Keypair,
     rpc_client: &RpcClient,
     blockhash: Hash,
-    mut txn: Transaction
+    mut txn: Transaction,
 ) -> (Transaction, solana_rpc_client_api::client_error::Result<()>) {
     txn.sign(&[signer], blockhash); // just in time signing
     let res = match rpc_client.send_and_confirm_transaction(&txn).await {
@@ -522,26 +520,25 @@ async fn signed_send(
         Err(e) => {
             match e.kind {
                 // Already claimed, skip.
-                | ErrorKind::TransactionError(TransactionError::AlreadyProcessed)
-                | ErrorKind::TransactionError(
-                      TransactionError::InstructionError(0, InstructionError::Custom(0)),
-                  )
-                | ErrorKind::RpcError(
-                      RpcError::RpcResponseError {
-                          data: RpcResponseErrorData::SendTransactionPreflightFailure(
-                              RpcSimulateTransactionResult {
-                                  err: Some(
-                                      TransactionError::InstructionError(
-                                          0,
-                                          InstructionError::Custom(0),
-                                      ),
-                                  ),
-                                  ..
-                              },
-                          ),
-                          ..
-                      },
-                  ) => Ok(()),
+                ErrorKind::TransactionError(TransactionError::AlreadyProcessed)
+                | ErrorKind::TransactionError(TransactionError::InstructionError(
+                    0,
+                    InstructionError::Custom(0),
+                ))
+                | ErrorKind::RpcError(RpcError::RpcResponseError {
+                    data:
+                        RpcResponseErrorData::SendTransactionPreflightFailure(
+                            RpcSimulateTransactionResult {
+                                err:
+                                    Some(TransactionError::InstructionError(
+                                        0,
+                                        InstructionError::Custom(0),
+                                    )),
+                                ..
+                            },
+                        ),
+                    ..
+                }) => Ok(()),
 
                 // transaction got held up too long and blockhash expired. retry txn
                 ErrorKind::TransactionError(TransactionError::BlockhashNotFound) => Err(e),
@@ -563,7 +560,7 @@ async fn signed_send(
 
 async fn get_batched_accounts(
     rpc_client: &RpcClient,
-    pubkeys: &[Pubkey]
+    pubkeys: &[Pubkey],
 ) -> solana_rpc_client_api::client_error::Result<HashMap<Pubkey, Option<Account>>> {
     let mut batched_accounts = HashMap::new();
 
@@ -577,36 +574,41 @@ async fn get_batched_accounts(
 /// Calculates the minimum balance needed to be rent-exempt
 /// taken from: https://github.com/jito-foundation/jito-solana/blob/d1ba42180d0093dd59480a77132477323a8e3f88/sdk/program/src/rent.rs#L78
 pub fn minimum_balance(data_len: usize) -> u64 {
-    ((
-        ACCOUNT_STORAGE_OVERHEAD.checked_add(data_len as u64)
-            .unwrap()
-            .checked_mul(DEFAULT_LAMPORTS_PER_BYTE_YEAR)
-            .unwrap() as f64
-    ) * DEFAULT_EXEMPTION_THRESHOLD) as u64
+    ((ACCOUNT_STORAGE_OVERHEAD
+        .checked_add(data_len as u64)
+        .unwrap()
+        .checked_mul(DEFAULT_LAMPORTS_PER_BYTE_YEAR)
+        .unwrap() as f64)
+        * DEFAULT_EXEMPTION_THRESHOLD) as u64
 }
 
 mod pubkey_string_conversion {
     use ::{
-        serde::{ self, Deserialize, Deserializer, Serializer },
+        serde::{self, Deserialize, Deserializer, Serializer},
         solana_sdk::pubkey::Pubkey,
         std::str::FromStr,
     };
 
     pub(crate) fn serialize<S>(pubkey: &Pubkey, serializer: S) -> Result<S::Ok, S::Error>
-        where S: Serializer
+    where
+        S: Serializer,
     {
         serializer.serialize_str(&pubkey.to_string())
     }
 
     pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<Pubkey, D::Error>
-        where D: Deserializer<'de>
+    where
+        D: Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
         Pubkey::from_str(&s).map_err(serde::de::Error::custom)
     }
 }
 
-pub fn read_json_from_file<T>(path: &PathBuf) -> serde_json::Result<T> where T: DeserializeOwned {
+pub fn read_json_from_file<T>(path: &PathBuf) -> serde_json::Result<T>
+where
+    T: DeserializeOwned,
+{
     let file = File::open(path).unwrap();
     let reader = BufReader::new(file);
     serde_json::from_reader(reader)

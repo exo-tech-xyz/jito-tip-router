@@ -205,17 +205,12 @@ impl MetaMerkleTree {
 mod tests {
     use std::path::PathBuf;
 
-    use solana_program::pubkey::Pubkey;
-    use solana_sdk::{
-        signature::Keypair,
-        signer::Signer,
-    };
-    use solana_program::hash::Hash;
-    use crate::generated_merkle_tree::{GeneratedMerkleTree, GeneratedMerkleTreeCollection};
-    use crate::generated_merkle_tree::{self};  // Updated import
-
+    use solana_program::{hash::Hash, pubkey::Pubkey};
+    use solana_sdk::{signature::Keypair, signer::Signer};
 
     use super::*;
+    use crate::generated_merkle_tree::{self}; // Updated import
+    use crate::generated_merkle_tree::{GeneratedMerkleTree, GeneratedMerkleTreeCollection};
 
     pub fn new_test_key() -> Pubkey {
         Keypair::new().pubkey()
@@ -300,7 +295,7 @@ mod tests {
                 staker_pubkey: Pubkey::new_unique(),
                 withdrawer_pubkey: Pubkey::new_unique(),
                 amount: 500,
-                proof: None,  // Will be filled in by the tree generation
+                proof: None, // Will be filled in by the tree generation
             },
             generated_merkle_tree::TreeNode {
                 claimant: Pubkey::new_unique(),
@@ -362,19 +357,30 @@ mod tests {
         };
 
         // Create MetaMerkleTree from collection
-        let meta_merkle_tree = MetaMerkleTree::new_from_generated_merkle_tree_collection(
-            generated_collection.clone()
-        ).unwrap();
+        let meta_merkle_tree =
+            MetaMerkleTree::new_from_generated_merkle_tree_collection(generated_collection.clone())
+                .unwrap();
 
         // Validate structure
-        assert_ne!(meta_merkle_tree.merkle_root, [0; 32], "Merkle root should not be zero");
-        assert_eq!(meta_merkle_tree.num_nodes, 2, "Should have two validator nodes");
+        assert_ne!(
+            meta_merkle_tree.merkle_root, [0; 32],
+            "Merkle root should not be zero"
+        );
+        assert_eq!(
+            meta_merkle_tree.num_nodes, 2,
+            "Should have two validator nodes"
+        );
 
         // Validate each node matches its source generated tree
-        for (node, generated_tree) in meta_merkle_tree.tree_nodes.iter()
-            .zip(generated_collection.generated_merkle_trees.iter()) 
+        for (node, generated_tree) in meta_merkle_tree
+            .tree_nodes
+            .iter()
+            .zip(generated_collection.generated_merkle_trees.iter())
         {
-            assert_eq!(node.tip_distribution_account, generated_tree.tip_distribution_account);
+            assert_eq!(
+                node.tip_distribution_account,
+                generated_tree.tip_distribution_account
+            );
             assert_eq!(node.max_total_claim, generated_tree.max_total_claim);
             assert_eq!(node.max_num_nodes, generated_tree.max_num_nodes);
             assert!(node.proof.is_some(), "Node should have a proof");
