@@ -1025,7 +1025,7 @@ mod tests {
                 staker_pubkey: staker_account_0,
                 withdrawer_pubkey: staker_account_0,
                 amount: 145_447, // Update to match actual amount
-                proof: None,d
+                proof: None,
             },
             TreeNode {
                 claimant: staker_account_1, // Use staker_account instead of stake_account
