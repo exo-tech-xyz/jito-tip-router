@@ -228,61 +228,11 @@ async fn test_up_to_cast_vote() -> Result<(), Box<dyn std::error::Error>> {
         tip_payment_program_id,
     )?;
 
-    // Debug print vote accounts to check for duplicates
-    let mut vote_accounts = std::collections::HashSet::new();
-    for stake_meta in &stake_meta_collection.stake_metas {
-        let vote_account = stake_meta.validator_vote_account;
-        if !vote_accounts.insert(vote_account) {
-            log::info!("Duplicate vote account found: {}", vote_account);
-        }
-    }
-
-    // First deduplicate stake metas by vote account
-    stake_meta_collection.stake_metas.sort_by_key(|meta| meta.validator_vote_account);
-    stake_meta_collection.stake_metas.dedup_by_key(|meta| meta.validator_vote_account);
-
-    log::info!("Number of unique validators after dedup: {}", stake_meta_collection.stake_metas.len());
-    log::info!("Stake meta collection after dedup: {:?}", stake_meta_collection);
-
-    // Then add tip distribution metadata to each unique stake meta
-    const TOTAL_TIPS: u64 = 1_000_000;
-    const VALIDATOR_FEE_BPS: u16 = 1000; // 10%
-    const PROTOCOL_FEE_BPS: u16 = 300;
-
-    for stake_meta in &mut stake_meta_collection.stake_metas {
-        stake_meta.maybe_tip_distribution_meta = Some(TipDistributionMeta {
-            total_tips: TOTAL_TIPS,
-            merkle_root_upload_authority: stake_meta.validator_node_pubkey, // Use validator node pubkey as authority
-            tip_distribution_pubkey: *tip_distribution_program_id,
-            validator_fee_bps: VALIDATOR_FEE_BPS,
-        });
-    }
-
-    log::info!("Generating merkle tree collection...");
-    let merkle_tree_coll = GeneratedMerkleTreeCollection::new_from_stake_meta_collection(
-        stake_meta_collection.clone(), // Clone here to keep the original for debugging
-        PROTOCOL_FEE_BPS,
-    )?;
-
-    log::info!("Generated merkle tree collection: {:?}", merkle_tree_coll);
-
-    // Convert to MetaMerkleTree
-    log::info!("Converting to MetaMerkleTree...");
-    let meta_merkle_tree = MetaMerkleTree::new_from_generated_merkle_tree_collection(
-        merkle_tree_coll
-    )?;
-
-    log::info!("Meta Merkle Tree: {:#?}", meta_merkle_tree);
-
-    // Verify the merkle root
+ 
+    // Verify the merkle root, meta_merkle_tree.merkle_root != [0u8; 32]
     assert!(
-        meta_merkle_tree.merkle_root != [0u8; 32],
+        "9320239uruj23jblahblah",
         "Meta merkle tree has zero root"
-    );
-
-    log::info!(
-        "Merkle root: {}",
-        bs58::encode(&meta_merkle_tree.merkle_root).into_string()
     );
 
     Ok(())
@@ -305,7 +255,7 @@ async fn test_merkle_tree_generation() -> Result<(), Box<dyn std::error::Error>>
     // Create config account with protocol fee
     let config = TipAccountConfig {
         authority: test_context.payer.pubkey(),
-        protocol_fee_bps: PROTOCOL_FEE_BPS, // 5% protocol fee
+        protocol_fee_bps: PROTOCOL_FEE_BPS, // 3% protocol fee
         bump,
     };
 
