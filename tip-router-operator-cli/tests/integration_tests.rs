@@ -10,6 +10,7 @@ use anchor_lang::prelude::AnchorSerialize;
 use ellipsis_client::EllipsisClient;
 use jito_tip_distribution::{self, state::Config, ID as TIP_DISTRIBUTION_ID};
 use jito_tip_payment::{self, ID as TIP_PAYMENT_ID};
+use log::info;
 use meta_merkle_tree::{
     generated_merkle_tree::{
         Delegation, GeneratedMerkleTreeCollection as MetaMerkleTreeCollection,
@@ -34,7 +35,6 @@ use tip_router_operator_cli::{
     claim_mev_workflow, merkle_root_generator_workflow, merkle_root_upload_workflow, process_epoch,
     stake_meta_generator_workflow::generate_stake_meta, Cli, Commands, TipAccountConfig,
 };
-use log::info;
 
 struct TestContext {
     pub context: ProgramTestContext,
