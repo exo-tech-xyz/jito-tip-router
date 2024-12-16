@@ -1,11 +1,6 @@
 pub mod cast_vote;
-pub mod claim_mev_workflow;
 pub mod ledger_utils;
-pub mod merkle_root_generator_workflow;
-pub mod merkle_root_upload_workflow;
-pub mod reclaim_rent_workflow;
-pub mod snapshot;
-pub mod stake_meta_generator_workflow;
+pub mod stake_meta_generator;
 pub use crate::cli::{Cli, Commands};
 pub mod cli;
 pub use crate::process_epoch::process_epoch;
@@ -23,9 +18,9 @@ use std::{
 
 use anchor_lang::{prelude::*, Id};
 use ellipsis_client::EllipsisClient;
-use jito_tip_distribution::{
-    program::JitoTipDistribution,
-    state::{ClaimStatus, TipDistributionAccount},
+use jito_tip_distribution_sdk::{
+    jito_tip_distribution::accounts::{ClaimStatus, TipDistributionAccount},
+    TIP_DISTRIBUTION_SEED,
 };
 use jito_tip_payment::{
     Config, CONFIG_ACCOUNT_SEED, TIP_ACCOUNT_SEED_0, TIP_ACCOUNT_SEED_1, TIP_ACCOUNT_SEED_2,
@@ -68,7 +63,7 @@ use solana_sdk::{
 use solana_transaction_status::TransactionStatus;
 use tokio::{sync::Semaphore, time::sleep};
 
-use crate::stake_meta_generator_workflow::StakeMetaGeneratorError::CheckedMathError;
+use crate::stake_meta_generator::StakeMetaGeneratorError::CheckedMathError;
 
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct GeneratedMerkleTreeCollection {
@@ -244,7 +239,7 @@ impl TipDistributionMeta {
         tda_wrapper: TipDistributionAccountWrapper,
         // The amount that will be left remaining in the tda to maintain rent exemption status.
         rent_exempt_amount: u64,
-    ) -> Result<Self, stake_meta_generator_workflow::StakeMetaGeneratorError> {
+    ) -> Result<Self, stake_meta_generator::StakeMetaGeneratorError> {
         Ok(TipDistributionMeta {
             tip_distribution_pubkey: tda_wrapper.tip_distribution_pubkey,
             total_tips: tda_wrapper
@@ -315,7 +310,7 @@ pub fn derive_tip_distribution_account_address(
 ) -> (Pubkey, u8) {
     Pubkey::find_program_address(
         &[
-            TipDistributionAccount::SEED,
+            TIP_DISTRIBUTION_SEED,
             vote_pubkey.to_bytes().as_ref(),
             epoch.to_le_bytes().as_ref(),
         ],
