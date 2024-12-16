@@ -1,10 +1,9 @@
 use {
-    crate::{ read_json_from_file, GeneratedMerkleTreeCollection, StakeMetaCollection },
+    crate::{ GeneratedMerkleTreeCollection, StakeMetaCollection },
     log::*,
-    solana_client::rpc_client::RpcClient,
-    std::{ fmt::Debug, fs::File, io::{ BufWriter, Write }, path::PathBuf },
+    std::{ fmt::Debug },
     thiserror::Error,
-    ellipsis_client::EllipsisClient,
+    // ellipsis_client::EllipsisClient,
 };
 
 #[derive(Error, Debug)]
@@ -19,6 +18,8 @@ pub enum MerkleRootGeneratorError {
     RpcError(#[from] Box<solana_client::client_error::ClientError>),
     #[error(transparent)]
     SerdeJsonError(#[from] serde_json::Error),
+    #[error("Checked math error")]
+    CheckedMathError,
 }
 
 pub async fn generate_merkle_root(

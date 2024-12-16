@@ -19,7 +19,7 @@ use {
     solana_sdk::{
         commitment_config::CommitmentConfig,
         pubkey::Pubkey,
-        signature::{ read_keypair_file, Signer },
+        signature::Signer,
         transaction::Transaction,
     },
     std::{ path::PathBuf, time::Duration },

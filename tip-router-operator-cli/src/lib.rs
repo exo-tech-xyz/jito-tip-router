@@ -150,110 +150,34 @@ fn emit_inconsistent_tree_node_amount_dp(
 impl GeneratedMerkleTreeCollection {
     pub async fn new_from_stake_meta_collection(
         stake_meta_coll: StakeMetaCollection,
-        protocol_fee_bps: u16
+        protocol_fee_bps: u16,
     ) -> Result<GeneratedMerkleTreeCollection, MerkleRootGeneratorError> {
         let (config_pda, _) = Pubkey::find_program_address(
             &[CONFIG_ACCOUNT_SEED],
-            &stake_meta_coll.tip_distribution_program_id
+            &stake_meta_coll.tip_distribution_program_id,
         );
 
         let generated_merkle_trees = stake_meta_coll.stake_metas
             .into_iter()
             .filter(|stake_meta| stake_meta.maybe_tip_distribution_meta.is_some())
-            .map(|stake_meta| {
-                let tip_distribution_meta = stake_meta.maybe_tip_distribution_meta
-                    .as_ref()
-                    .unwrap();
-
-                // Calculate fees
-                let protocol_fee_amount = (((tip_distribution_meta.total_tips as u128) *
-                    (protocol_fee_bps as u128)) /
-                    10000u128) as u64;
-                let validator_fee_amount = (((tip_distribution_meta.total_tips as u128) *
-                    (tip_distribution_meta.validator_fee_bps as u128)) /
-                    10000u128) as u64;
-                let remaining_tips =
-                    tip_distribution_meta.total_tips - protocol_fee_amount - validator_fee_amount;
-
-                // Create nodes in order: protocol fee, validator fee, delegators
-                let mut tree_nodes = Vec::with_capacity(2 + stake_meta.delegations.len());
-
-                // 1. Protocol Fee Node
-                let (protocol_fee_recipient, _) = Pubkey::find_program_address(
-                    &[b"protocol_fee", &(0u64).to_le_bytes()],
-                    &stake_meta_coll.tip_distribution_program_id
-                );
-
-                let (claim_status_pubkey, claim_status_bump) = Pubkey::find_program_address(
-                    &[
-                        ClaimStatus::SEED,
-                        &protocol_fee_recipient.to_bytes(),
-                        &tip_distribution_meta.tip_distribution_pubkey.to_bytes(),
-                    ],
-                    &JitoTipDistribution::id()
-                );
-
-                tree_nodes.push(TreeNode {
-                    claimant: protocol_fee_recipient,
-                    claim_status_pubkey,
-                    claim_status_bump,
-                    staker_pubkey: Pubkey::default(),
-                    withdrawer_pubkey: Pubkey::default(),
-                    amount: protocol_fee_amount,
-                    proof: None,
-                });
-
-                // 2. Validator Fee Node
-                let (claim_status_pubkey, claim_status_bump) = Pubkey::find_program_address(
-                    &[
-                        ClaimStatus::SEED,
-                        &stake_meta.validator_node_pubkey.to_bytes(),
-                        &tip_distribution_meta.tip_distribution_pubkey.to_bytes(),
-                    ],
-                    &JitoTipDistribution::id()
-                );
-
-                tree_nodes.push(TreeNode {
-                    claimant: stake_meta.validator_node_pubkey,
-                    claim_status_pubkey,
-                    claim_status_bump,
-                    staker_pubkey: Pubkey::default(),
-                    withdrawer_pubkey: Pubkey::default(),
-                    amount: validator_fee_amount,
-                    proof: None,
-                });
-
-                // 3. Delegator Nodes
-                for delegation in &stake_meta.delegations {
-                    let delegator_share = (((remaining_tips as u128) *
-                        (delegation.lamports_delegated as u128)) /
-                        (stake_meta.total_delegated as u128)) as u64;
-
-                    let (claim_status_pubkey, claim_status_bump) = Pubkey::find_program_address(
-                        &[
-                            ClaimStatus::SEED,
-                            &delegation.staker_pubkey.to_bytes(),
-                            &tip_distribution_meta.tip_distribution_pubkey.to_bytes(),
-                        ],
-                        &JitoTipDistribution::id()
-                    );
-
-                    tree_nodes.push(TreeNode {
-                        claimant: delegation.staker_pubkey,
-                        claim_status_pubkey,
-                        claim_status_bump,
-                        staker_pubkey: delegation.staker_pubkey,
-                        withdrawer_pubkey: delegation.withdrawer_pubkey,
-                        amount: delegator_share,
-                        proof: None,
-                    });
-                }
+            .filter_map(|stake_meta| {
+                // Use the helper function to create tree nodes
+                let mut tree_nodes = match TreeNode::vec_from_stake_meta(
+                    &stake_meta,
+                    protocol_fee_bps,
+                    &stake_meta_coll.tip_distribution_program_id, // Pass the program ID
+                ) {
+                    Err(e) => return Some(Err(e)),
+                    Ok(maybe_tree_nodes) => maybe_tree_nodes,
+                }?;
 
                 // Create merkle tree and add proofs
                 let hashed_nodes: Vec<[u8; 32]> = tree_nodes
                     .iter()
                     .map(|n| n.hash().to_bytes())
                     .collect();
+
+                let tip_distribution_meta = stake_meta.maybe_tip_distribution_meta.unwrap();
 
                 let merkle_tree = MerkleTree::new(&hashed_nodes[..], true);
                 let max_num_nodes = tree_nodes.len() as u64;
@@ -262,16 +186,17 @@ impl GeneratedMerkleTreeCollection {
                     tree_node.proof = Some(get_proof(&merkle_tree, i));
                 }
 
-                Ok(GeneratedMerkleTree {
+                Some(Ok(GeneratedMerkleTree {
                     max_num_nodes,
                     tip_distribution_account: tip_distribution_meta.tip_distribution_pubkey,
                     merkle_root_upload_authority: tip_distribution_meta.merkle_root_upload_authority,
                     merkle_root: *merkle_tree.get_root().unwrap(),
                     tree_nodes,
                     max_total_claim: tip_distribution_meta.total_tips,
-                })
+                }))
             })
             .collect::<Result<Vec<_>, MerkleRootGeneratorError>>()?;
+
         Ok(GeneratedMerkleTreeCollection {
             generated_merkle_trees,
             bank_hash: stake_meta_coll.bank_hash,
@@ -350,49 +275,77 @@ pub struct TreeNode {
 
 impl TreeNode {
     fn vec_from_stake_meta(
-        stake_meta: &StakeMeta
+        stake_meta: &StakeMeta,
+        protocol_fee_bps: u16,
+        tip_distribution_program_id: &Pubkey,
     ) -> Result<Option<Vec<TreeNode>>, MerkleRootGeneratorError> {
+        
         if let Some(tip_distribution_meta) = stake_meta.maybe_tip_distribution_meta.as_ref() {
-            // Calculate protocol fee (5%)
-            const PROTOCOL_FEE_BPS: u16 = 300;
-            let protocol_fee_amount = (tip_distribution_meta.total_tips as u128)
-                .checked_mul(PROTOCOL_FEE_BPS as u128)
-                .unwrap()
-                .checked_div(10_000)
-                .unwrap() as u64;
+            let protocol_fee_amount = u128::div_ceil(
+                tip_distribution_meta.total_tips as u128 * protocol_fee_bps as u128,
+                10_000,
+            );
+            let protocol_fee_amount = u64::try_from(protocol_fee_amount)
+                .map_err(|_| MerkleRootGeneratorError::CheckedMathError)?;
 
-            // Calculate validator fee
-            let validator_amount = (tip_distribution_meta.total_tips as u128)
-                .checked_mul(tip_distribution_meta.validator_fee_bps as u128)
-                .unwrap()
-                .checked_div(10_000)
-                .unwrap() as u64;
+            let validator_amount = u128::div_ceil(
+                tip_distribution_meta.total_tips as u128 * tip_distribution_meta.validator_fee_bps as u128,
+                10_000,
+            );
+            let validator_amount = u64::try_from(validator_amount)
+                .map_err(|_| MerkleRootGeneratorError::CheckedMathError)?;
 
-            // Calculate remaining rewards after both fees
             let remaining_total_rewards = tip_distribution_meta.total_tips
                 .checked_sub(protocol_fee_amount)
-                .unwrap()
-                .checked_sub(validator_amount)
-                .unwrap() as u128;
+                .and_then(|v| v.checked_sub(validator_amount))
+                .ok_or(MerkleRootGeneratorError::CheckedMathError)?;
 
-            let (claim_status_pubkey, claim_status_bump) = Pubkey::find_program_address(
+            println!("Protocol Fee Amount: {}", protocol_fee_amount);
+            println!("Validator Amount: {}", validator_amount);
+            println!("Remaining Total Rewards: {}", remaining_total_rewards);
+
+            let (protocol_fee_recipient, _) = Pubkey::find_program_address(
+                &[b"protocol_fee", &(0u64).to_le_bytes()],
+                tip_distribution_program_id,
+            );
+
+            let (protocol_claim_status_pubkey, protocol_claim_status_bump) = Pubkey::find_program_address(
                 &[
                     ClaimStatus::SEED,
-                    &stake_meta.validator_node_pubkey.to_bytes(), // Changed to validator_node_pubkey
+                    &protocol_fee_recipient.to_bytes(),
                     &tip_distribution_meta.tip_distribution_pubkey.to_bytes(),
                 ],
-                &JitoTipDistribution::id()
+                &JitoTipDistribution::id(),
             );
 
             let mut tree_nodes = vec![TreeNode {
-                claimant: stake_meta.validator_node_pubkey, // Changed to validator_node_pubkey
-                claim_status_pubkey,
-                claim_status_bump,
+                claimant: protocol_fee_recipient,
+                claim_status_pubkey: protocol_claim_status_pubkey,
+                claim_status_bump: protocol_claim_status_bump,
+                staker_pubkey: Pubkey::default(),
+                withdrawer_pubkey: Pubkey::default(),
+                amount: protocol_fee_amount,
+                proof: None,
+            }];
+
+            let (validator_claim_status_pubkey, validator_claim_status_bump) = Pubkey::find_program_address(
+                &[
+                    ClaimStatus::SEED,
+                    &stake_meta.validator_node_pubkey.to_bytes(),
+                    &tip_distribution_meta.tip_distribution_pubkey.to_bytes(),
+                ],
+                &JitoTipDistribution::id(),
+            );
+
+            tree_nodes.push(TreeNode {
+                claimant: stake_meta.validator_node_pubkey,
+                claim_status_pubkey: validator_claim_status_pubkey,
+                claim_status_bump: validator_claim_status_bump,
                 staker_pubkey: Pubkey::default(),
                 withdrawer_pubkey: Pubkey::default(),
                 amount: validator_amount,
                 proof: None,
-            }];
+            });
 
             let total_delegated = stake_meta.total_delegated as u128;
             tree_nodes.extend(
@@ -400,18 +353,25 @@ impl TreeNode {
                     .iter()
                     .map(|delegation| {
                         let amount_delegated = delegation.lamports_delegated as u128;
-                        let reward_amount = amount_delegated
-                            .checked_mul(remaining_total_rewards)
-                            .unwrap()
-                            .checked_div(total_delegated)
-                            .unwrap();
+                        let reward_amount = u128::div_ceil(
+                            amount_delegated * remaining_total_rewards as u128,
+                            total_delegated,
+                        );
+                        let reward_amount = u64::try_from(reward_amount)
+                            .map_err(|_| MerkleRootGeneratorError::CheckedMathError)?;
+
+                        println!(
+                            "Delegation: {}, Amount Delegated: {}, Reward Amount: {}",
+                            delegation.staker_pubkey, amount_delegated, reward_amount
+                        );
+
                         let (claim_status_pubkey, claim_status_bump) = Pubkey::find_program_address(
                             &[
                                 ClaimStatus::SEED,
                                 &delegation.staker_pubkey.to_bytes(),
                                 &tip_distribution_meta.tip_distribution_pubkey.to_bytes(),
                             ],
-                            &JitoTipDistribution::id()
+                            &JitoTipDistribution::id(),
                         );
                         Ok(TreeNode {
                             claimant: delegation.staker_pubkey,
@@ -419,7 +379,7 @@ impl TreeNode {
                             claim_status_bump,
                             staker_pubkey: delegation.staker_pubkey,
                             withdrawer_pubkey: delegation.withdrawer_pubkey,
-                            amount: reward_amount as u64,
+                            amount: reward_amount,
                             proof: None,
                         })
                     })
@@ -1065,7 +1025,7 @@ mod tests {
                 staker_pubkey: staker_account_0,
                 withdrawer_pubkey: staker_account_0,
                 amount: 145_447, // Update to match actual amount
-                proof: None,
+                proof: None,d
             },
             TreeNode {
                 claimant: staker_account_1, // Use staker_account instead of stake_account
