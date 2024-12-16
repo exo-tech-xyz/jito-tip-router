@@ -1,7 +1,7 @@
 use std::{
     fs::{self, File},
     io::BufReader,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::Arc,
     time::Duration,
 };
@@ -32,10 +32,8 @@ use tempfile::TempDir;
 use thiserror::Error;
 use tip_router_operator_cli::{
     claim_mev_workflow, merkle_root_generator_workflow, merkle_root_upload_workflow, process_epoch,
-    Cli, Commands, TipAccountConfig,
+    stake_meta_generator_workflow::generate_stake_meta, Cli, Commands, TipAccountConfig,
 };
-use std::path::Path;
-use tip_router_operator_cli::stake_meta_generator_workflow::generate_stake_meta;
 
 struct TestContext {
     pub context: ProgramTestContext,
@@ -211,7 +209,10 @@ impl TestContext {
 async fn test_up_to_cast_vote() -> Result<(), Box<dyn std::error::Error>> {
     // Define the necessary parameters for the function call
     let ledger_path = Path::new("tests/fixtures/test-ledger");
-    let account_paths = vec![PathBuf::from("tests/fixtures/accounts"), PathBuf::from("path/to/account2")];
+    let account_paths = vec![
+        PathBuf::from("tests/fixtures/accounts"),
+        PathBuf::from("path/to/account2"),
+    ];
     let full_snapshots_path = PathBuf::from("path/to/full_snapshots");
     let desired_slot = &144; // Replace with the actual desired slot
     let tip_distribution_program_id = &TIP_DISTRIBUTION_ID; // Replace with actual Pubkey
