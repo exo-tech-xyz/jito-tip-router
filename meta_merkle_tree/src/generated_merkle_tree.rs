@@ -649,7 +649,7 @@ mod tests {
                 claim_status_bump: claim_statuses[4].1,
                 staker_pubkey: Pubkey::default(),
                 withdrawer_pubkey: Pubkey::default(),
-                amount: 57_003_663_339,
+                amount: 57_003_663_340,
                 proof: None,
             },
             TreeNode {
