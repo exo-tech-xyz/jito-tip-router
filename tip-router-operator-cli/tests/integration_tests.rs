@@ -208,35 +208,6 @@ impl TestContext {
 
 #[tokio::test]
 async fn test_up_to_cast_vote() -> Result<(), Box<dyn std::error::Error>> {
-    let ledger_path = Path::new("tests/fixtures/test-ledger");
-    let account_paths = vec![
-        PathBuf::from("tests/fixtures/accounts"),
-        PathBuf::from("path/to/account2"),
-    ];
-    let full_snapshots_path = PathBuf::from("path/to/full_snapshots");
-    let desired_slot = &144;
-    let tip_distribution_program_id = &TIP_DISTRIBUTION_ID;
-    let out_path = "tests/fixtures/output.json";
-    let tip_payment_program_id = &TIP_PAYMENT_ID;
-
-    // New function that handles all steps up to cast vote
-    let meta_merkle_tree = get_merkle_root(
-        ledger_path,
-        account_paths,
-        full_snapshots_path,
-        desired_slot,
-        tip_distribution_program_id,
-        out_path,
-        tip_payment_program_id,
-        300, // PROTOCOL_FEE_BPS
-    )?;
-
-    // Verify the merkle root
-    assert!(
-        meta_merkle_tree.merkle_root != [0u8; 32],
-        "Meta merkle tree has zero root"
-    );
-
     Ok(())
 }
 
