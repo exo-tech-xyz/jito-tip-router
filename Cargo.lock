@@ -3056,7 +3056,7 @@ dependencies = [
 [[package]]
 name = "jito-programs-vote-state"
 version = "0.1.5"
-source = "git+https://github.com/exo-tech-xyz/jito-programs.git?rev=6e5cbce5e2866da0585ef4fa35ee1168fce4556f#6e5cbce5e2866da0585ef4fa35ee1168fce4556f"
+source = "git+https://github.com/exo-tech-xyz/jito-programs.git?rev=c21f7a2d84cba6113d2884328ee9753ab8c368f6#c21f7a2d84cba6113d2884328ee9753ab8c368f6"
 dependencies = [
  "anchor-lang 0.30.1",
  "bincode",
@@ -3135,7 +3135,7 @@ dependencies = [
 [[package]]
 name = "jito-tip-distribution"
 version = "0.1.5"
-source = "git+https://github.com/exo-tech-xyz/jito-programs.git?rev=6e5cbce5e2866da0585ef4fa35ee1168fce4556f#6e5cbce5e2866da0585ef4fa35ee1168fce4556f"
+source = "git+https://github.com/exo-tech-xyz/jito-programs.git?rev=c21f7a2d84cba6113d2884328ee9753ab8c368f6#c21f7a2d84cba6113d2884328ee9753ab8c368f6"
 dependencies = [
  "anchor-lang 0.30.1",
  "default-env",
@@ -3154,7 +3154,7 @@ dependencies = [
 [[package]]
 name = "jito-tip-payment"
 version = "0.1.5"
-source = "git+https://github.com/exo-tech-xyz/jito-programs.git?rev=6e5cbce5e2866da0585ef4fa35ee1168fce4556f#6e5cbce5e2866da0585ef4fa35ee1168fce4556f"
+source = "git+https://github.com/exo-tech-xyz/jito-programs.git?rev=c21f7a2d84cba6113d2884328ee9753ab8c368f6#c21f7a2d84cba6113d2884328ee9753ab8c368f6"
 dependencies = [
  "anchor-lang 0.30.1",
  "default-env",
@@ -3667,6 +3667,7 @@ dependencies = [
 name = "meta-merkle-tree"
 version = "0.0.1"
 dependencies = [
+ "anchor-lang 0.30.1",
  "borsh 0.10.4",
  "bytemuck",
  "fast-math",
@@ -3675,7 +3676,9 @@ dependencies = [
  "jito-jsm-core",
  "jito-restaking-core",
  "jito-restaking-sdk",
+ "jito-tip-distribution",
  "jito-tip-distribution-sdk",
+ "jito-tip-payment",
  "jito-vault-core",
  "jito-vault-sdk",
  "rand 0.8.5",

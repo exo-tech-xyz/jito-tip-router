@@ -1,26 +1,12 @@
 use {
-    crate::{ GeneratedMerkleTreeCollection, StakeMetaCollection },
+    meta_merkle_tree::{ GeneratedMerkleTreeCollection, StakeMetaCollection, MerkleRootGeneratorError },
     log::*,
-    std::{ fmt::Debug },
+    std::fmt::Debug,
     thiserror::Error,
     // ellipsis_client::EllipsisClient,
 };
 
 #[derive(Error, Debug)]
-pub enum MerkleRootGeneratorError {
-    #[error("Account not found")]
-    AccountNotFound,
-    #[error("Deserialization error")]
-    DeserializationError,
-    #[error(transparent)]
-    IoError(#[from] std::io::Error),
-    #[error(transparent)]
-    RpcError(#[from] Box<solana_client::client_error::ClientError>),
-    #[error(transparent)]
-    SerdeJsonError(#[from] serde_json::Error),
-    #[error("Checked math error")]
-    CheckedMathError,
-}
 
 pub async fn generate_merkle_root(
     stake_meta_coll: StakeMetaCollection,
