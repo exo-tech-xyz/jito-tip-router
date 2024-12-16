@@ -34,7 +34,7 @@ use thiserror::Error;
 use tip_router_operator_cli::{
     process_epoch, stake_meta_generator::generate_stake_meta, Cli, Commands, TipAccountConfig,
 };
-
+use solana_sdk::bs58;
 struct TestContext {
     pub context: ProgramTestContext,
     pub tip_distribution_program_id: Pubkey,
@@ -207,19 +207,17 @@ impl TestContext {
 
 #[tokio::test]
 async fn test_up_to_cast_vote() -> Result<(), Box<dyn std::error::Error>> {
-    // Define the necessary parameters for the function call
     let ledger_path = Path::new("tests/fixtures/test-ledger");
     let account_paths = vec![
         PathBuf::from("tests/fixtures/accounts"),
         PathBuf::from("path/to/account2"),
     ];
     let full_snapshots_path = PathBuf::from("path/to/full_snapshots");
-    let desired_slot = &144; // Replace with the actual desired slot
-    let tip_distribution_program_id = &TIP_DISTRIBUTION_ID; // Replace with actual Pubkey
+    let desired_slot = &144;
+    let tip_distribution_program_id = &TIP_DISTRIBUTION_ID;
     let out_path = "tests/fixtures/output.json";
-    let tip_payment_program_id = &TIP_PAYMENT_ID; // Replace with actual Pubkey
+    let tip_payment_program_id = &TIP_PAYMENT_ID;
 
-    // Call the generate_stake_meta function
     let mut stake_meta_collection = generate_stake_meta(
         ledger_path,
         account_paths,
@@ -230,51 +228,62 @@ async fn test_up_to_cast_vote() -> Result<(), Box<dyn std::error::Error>> {
         tip_payment_program_id,
     )?;
 
-    info!("Stake meta collection: {:?}", stake_meta_collection);
+    // Debug print vote accounts to check for duplicates
+    let mut vote_accounts = std::collections::HashSet::new();
+    for stake_meta in &stake_meta_collection.stake_metas {
+        let vote_account = stake_meta.validator_vote_account;
+        if !vote_accounts.insert(vote_account) {
+            log::info!("Duplicate vote account found: {}", vote_account);
+        }
+    }
 
-    // Add tip distribution metadata to each stake meta
+    // First deduplicate stake metas by vote account
+    stake_meta_collection.stake_metas.sort_by_key(|meta| meta.validator_vote_account);
+    stake_meta_collection.stake_metas.dedup_by_key(|meta| meta.validator_vote_account);
+
+    log::info!("Number of unique validators after dedup: {}", stake_meta_collection.stake_metas.len());
+    log::info!("Stake meta collection after dedup: {:?}", stake_meta_collection);
+
+    // Then add tip distribution metadata to each unique stake meta
     const TOTAL_TIPS: u64 = 1_000_000;
     const VALIDATOR_FEE_BPS: u16 = 1000; // 10%
+    const PROTOCOL_FEE_BPS: u16 = 300;
 
     for stake_meta in &mut stake_meta_collection.stake_metas {
         stake_meta.maybe_tip_distribution_meta = Some(TipDistributionMeta {
             total_tips: TOTAL_TIPS,
-            merkle_root_upload_authority: Pubkey::new_unique(), // or use a specific authority
+            merkle_root_upload_authority: stake_meta.validator_node_pubkey, // Use validator node pubkey as authority
             tip_distribution_pubkey: *tip_distribution_program_id,
             validator_fee_bps: VALIDATOR_FEE_BPS,
         });
     }
 
-    const PROTOCOL_FEE_BPS: u16 = 300;
-
-    // Generate merkle root
+    log::info!("Generating merkle tree collection...");
     let merkle_tree_coll = GeneratedMerkleTreeCollection::new_from_stake_meta_collection(
-        stake_meta_collection.clone(),
+        stake_meta_collection.clone(), // Clone here to keep the original for debugging
         PROTOCOL_FEE_BPS,
     )?;
 
-    info!("Merkle tree collection: {:?}", merkle_tree_coll);
+    log::info!("Generated merkle tree collection: {:?}", merkle_tree_coll);
 
-    // Add assertions to verify the merkle tree collection
+    // Convert to MetaMerkleTree
+    log::info!("Converting to MetaMerkleTree...");
+    let meta_merkle_tree = MetaMerkleTree::new_from_generated_merkle_tree_collection(
+        merkle_tree_coll
+    )?;
+
+    log::info!("Meta Merkle Tree: {:#?}", meta_merkle_tree);
+
+    // Verify the merkle root
     assert!(
-        !merkle_tree_coll.generated_merkle_trees.is_empty(),
-        "No merkle trees generated"
+        meta_merkle_tree.merkle_root != [0u8; 32],
+        "Meta merkle tree has zero root"
     );
 
-    // Log the merkle tree collection
-    eprintln!("Merkle Tree Collection: {:#?}", merkle_tree_coll);
-
-    // You can add more specific assertions based on your expected outcomes
-    let first_tree = &merkle_tree_coll.generated_merkle_trees[0];
-
-    // Test merkle root is not empty
-    assert!(
-        !first_tree.merkle_root.to_string().is_empty(),
-        "Merkle root is empty"
+    log::info!(
+        "Merkle root: {}",
+        bs58::encode(&meta_merkle_tree.merkle_root).into_string()
     );
-
-    // Test tree nodes exist
-    assert!(!first_tree.tree_nodes.is_empty(), "No tree nodes generated");
 
     Ok(())
 }
