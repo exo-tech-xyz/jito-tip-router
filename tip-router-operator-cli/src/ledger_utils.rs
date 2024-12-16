@@ -29,11 +29,12 @@ pub fn get_bank_from_ledger(
 ) -> Arc<Bank> {
     let genesis_config =
         open_genesis_config(ledger_path, MAX_GENESIS_ARCHIVE_UNPACKED_SIZE).unwrap();
+    let access_type = AccessType::Secondary;
     // Error handling is a modified copy pasta from ledger utils
     let blockstore = match Blockstore::open_with_options(
         ledger_path,
         BlockstoreOptions {
-            access_type: AccessType::Secondary,
+            access_type: access_type.clone(),
             ..BlockstoreOptions::default()
         },
     ) {
@@ -50,7 +51,7 @@ pub fn get_bank_from_ledger(
             // The blockstore settings with Primary access can resolve the
             // above issues automatically, so only emit the help messages
             // if access type is Secondary
-            let is_secondary = false; // access_type == AccessType::Secondary;
+            let is_secondary = access_type == AccessType::Secondary;
 
             if missing_blockstore && is_secondary {
                 panic!(

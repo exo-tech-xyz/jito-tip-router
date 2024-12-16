@@ -318,7 +318,6 @@ fn group_delegations_by_voter_pubkey(
 
 #[cfg(test)]
 mod tests {
-    use solana_stake_program::stake_state;
     use {
         super::*,
         crate::derive_tip_distribution_account_address,
@@ -347,9 +346,6 @@ mod tests {
         },
         solana_stake_program::stake_state,
     };
-
-    use super::*;
-    use crate::derive_tip_distribution_account_address;
 
     #[test]
     fn test_generate_stake_meta_collection_happy_path() {
