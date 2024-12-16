@@ -165,7 +165,7 @@ echo "Increasing amount delegated to each validator in stake pool"
 increase_stakes "$stake_pool_pubkey" "$validator_file" "$stake_per_validator"
 
 
-# TODO: wait for certain epoch
+# wait for certain epoch
 echo "waiting for epoch X from validator $VALIDATOR_PID"
 while true
 do
