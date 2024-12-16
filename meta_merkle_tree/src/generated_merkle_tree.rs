@@ -1,10 +1,7 @@
 use std::{fs::File, io::BufReader, path::PathBuf};
 
 use anchor_lang::Id;
-use jito_tip_distribution::{
-    program::JitoTipDistribution,
-    state::ClaimStatus,
-};
+use jito_tip_distribution::{program::JitoTipDistribution, state::ClaimStatus};
 use jito_tip_payment::CONFIG_ACCOUNT_SEED;
 use log::info;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -14,6 +11,7 @@ use solana_program::{
     pubkey::Pubkey,
 };
 use thiserror::Error;
+
 use crate::{merkle_tree::MerkleTree, utils::get_proof};
 
 #[derive(Error, Debug)]
@@ -744,4 +742,3 @@ mod tests {
             });
     }
 }
-
