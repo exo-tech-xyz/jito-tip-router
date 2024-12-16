@@ -34,6 +34,8 @@ use tip_router_operator_cli::{
     claim_mev_workflow, merkle_root_generator_workflow, merkle_root_upload_workflow, process_epoch,
     Cli, Commands, TipAccountConfig,
 };
+use std::path::Path;
+use tip_router_operator_cli::stake_meta_generator_workflow::generate_stake_meta;
 
 struct TestContext {
     pub context: ProgramTestContext,
@@ -206,7 +208,33 @@ impl TestContext {
 }
 
 #[tokio::test]
-async fn test_up_to_cast_vote() -> Result<(), Box<dyn std::error::Error>> {}
+async fn test_up_to_cast_vote() -> Result<(), Box<dyn std::error::Error>> {
+    // Define the necessary parameters for the function call
+    let ledger_path = Path::new("tests/fixtures/test-ledger");
+    let account_paths = vec![PathBuf::from("tests/fixtures/accounts"), PathBuf::from("path/to/account2")];
+    let full_snapshots_path = PathBuf::from("path/to/full_snapshots");
+    let desired_slot = &144; // Replace with the actual desired slot
+    let tip_distribution_program_id = &TIP_DISTRIBUTION_ID; // Replace with actual Pubkey
+    let out_path = "tests/fixtures/output.json";
+    let tip_payment_program_id = &TIP_PAYMENT_ID; // Replace with actual Pubkey
+
+    // Call the generate_stake_meta function
+    let stake_meta_collection = generate_stake_meta(
+        ledger_path,
+        account_paths,
+        full_snapshots_path,
+        desired_slot,
+        tip_distribution_program_id,
+        out_path,
+        tip_payment_program_id,
+    )?;
+
+    // Add assertions or further test logic here
+    // For example, you might want to check the contents of stake_meta_collection
+
+    Ok(())
+}
+
 #[tokio::test]
 async fn test_merkle_tree_generation() -> Result<(), Box<dyn std::error::Error>> {
     // Constants
