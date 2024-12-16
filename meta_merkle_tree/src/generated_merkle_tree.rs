@@ -3,9 +3,8 @@ use std::{fs::File, io::BufReader, path::PathBuf};
 use anchor_lang::Id;
 use jito_tip_distribution::{
     program::JitoTipDistribution,
-    state::{ClaimStatus, TipDistributionAccount},
+    state::ClaimStatus,
 };
-use jito_tip_distribution_sdk::CLAIM_STATUS_SEED;
 use jito_tip_payment::CONFIG_ACCOUNT_SEED;
 use log::info;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
