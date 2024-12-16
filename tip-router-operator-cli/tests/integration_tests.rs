@@ -251,31 +251,6 @@ pub fn get_merkle_root(
     tip_payment_program_id: &Pubkey,
     protocol_fee_bps: u16,
 ) -> Result<MetaMerkleTree, Box<dyn std::error::Error>> {
-    // Get stake meta collection
-    let mut stake_meta_collection = get_bank_from_ledger(
-        ledger_path,
-        account_paths,
-        full_snapshots_path,
-        desired_slot,
-    );
-
-    // Generate merkle tree collection
-    let merkle_tree_coll = GeneratedMerkleTreeCollection::new_from_stake_meta_collection(
-        StakeMetaCollection {
-            epoch: stake_meta_collection.epoch(),
-            stake_metas: vec![], // TODO: Convert bank data to stake metas
-            bank_hash: stake_meta_collection.hash().to_string(),
-            slot: stake_meta_collection.slot(),
-            tip_distribution_program_id: *tip_distribution_program_id,
-        },
-        protocol_fee_bps,
-    )?;
-
-    // Convert to MetaMerkleTree
-    let meta_merkle_tree =
-        MetaMerkleTree::new_from_generated_merkle_tree_collection(merkle_tree_coll)?;
-
-    Ok(meta_merkle_tree)
 }
 
 #[tokio::test]
