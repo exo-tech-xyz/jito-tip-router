@@ -302,9 +302,8 @@ pub fn get_merkle_root(
     )?;
 
     // Convert to MetaMerkleTree
-    let meta_merkle_tree = MetaMerkleTree::new_from_generated_merkle_tree_collection(
-        merkle_tree_coll
-    )?;
+    let meta_merkle_tree =
+        MetaMerkleTree::new_from_generated_merkle_tree_collection(merkle_tree_coll)?;
 
     Ok(meta_merkle_tree)
 }
