@@ -233,8 +233,33 @@ async fn test_up_to_cast_vote() -> Result<(), Box<dyn std::error::Error>> {
 
     info!("Stake meta collection: {:?}", stake_meta_collection);
 
-    // Add assertions or further test logic here
-    // For example, you might want to check the contents of stake_meta_collection
+    // Generate merkle root
+    let merkle_tree_coll = merkle_root_generator_workflow::generate_merkle_root(
+        stake_meta_collection.clone(),
+        PROTOCOL_FEE_BPS,
+    )
+    .await?;
+
+    // Add assertions to verify the merkle tree collection
+    assert!(
+        !merkle_tree_coll.generated_merkle_trees.is_empty(),
+        "No merkle trees generated"
+    );
+
+    // Log the merkle tree collection
+    eprintln!("Merkle Tree Collection: {:#?}", merkle_tree_coll);
+
+    // You can add more specific assertions based on your expected outcomes
+    let first_tree = &merkle_tree_coll.generated_merkle_trees[0];
+
+    // Test merkle root is not empty
+    assert!(
+        !first_tree.merkle_root.to_string().is_empty(),
+        "Merkle root is empty"
+    );
+
+    // Test tree nodes exist
+    assert!(!first_tree.tree_nodes.is_empty(), "No tree nodes generated");
 
     Ok(())
 }
