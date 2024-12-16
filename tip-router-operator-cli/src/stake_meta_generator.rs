@@ -5,7 +5,7 @@ use {
     },
     anchor_lang::AccountDeserialize,
     itertools::Itertools,
-    jito_tip_distribution::state::TipDistributionAccount,
+    jito_tip_distribution_sdk::TipDistributionAccount,
     jito_tip_payment::{Config, CONFIG_ACCOUNT_SEED},
     log::*,
     meta_merkle_tree::generated_merkle_tree::{
@@ -346,7 +346,7 @@ mod tests {
         super::*,
         crate::derive_tip_distribution_account_address,
         anchor_lang::AccountSerialize,
-        jito_tip_distribution::state::TipDistributionAccount,
+        jito_tip_distribution_sdk::TIP_DISTRIBUTION_SIZE,
         jito_tip_payment::{
             InitBumps, TipPaymentAccount, CONFIG_ACCOUNT_SEED, TIP_ACCOUNT_SEED_0,
             TIP_ACCOUNT_SEED_1, TIP_ACCOUNT_SEED_2, TIP_ACCOUNT_SEED_3, TIP_ACCOUNT_SEED_4,
@@ -700,9 +700,7 @@ mod tests {
                     tip_distribution_pubkey: tda_0_fields.0,
                     total_tips: tip_distro_0_tips
                         .checked_sub(
-                            bank.get_minimum_balance_for_rent_exemption(
-                                TipDistributionAccount::SIZE,
-                            ),
+                            bank.get_minimum_balance_for_rent_exemption(TIP_DISTRIBUTION_SIZE),
                         )
                         .unwrap(),
                     validator_fee_bps: tda_0_fields.1,
@@ -726,9 +724,7 @@ mod tests {
                     tip_distribution_pubkey: tda_1_fields.0,
                     total_tips: tip_distro_1_tips
                         .checked_sub(
-                            bank.get_minimum_balance_for_rent_exemption(
-                                TipDistributionAccount::SIZE,
-                            ),
+                            bank.get_minimum_balance_for_rent_exemption(TIP_DISTRIBUTION_SIZE),
                         )
                         .unwrap(),
                     validator_fee_bps: tda_1_fields.1,
@@ -752,9 +748,7 @@ mod tests {
                     tip_distribution_pubkey: tda_2_fields.0,
                     total_tips: tip_distro_2_tips
                         .checked_sub(
-                            bank.get_minimum_balance_for_rent_exemption(
-                                TipDistributionAccount::SIZE,
-                            ),
+                            bank.get_minimum_balance_for_rent_exemption(TIP_DISTRIBUTION_SIZE),
                         )
                         .unwrap(),
                     validator_fee_bps: tda_2_fields.1,
@@ -876,13 +870,10 @@ mod tests {
         lamports: u64,
         tda: TipDistributionAccount,
     ) -> AccountSharedData {
-        let mut account_data = AccountSharedData::new(
-            lamports,
-            TipDistributionAccount::SIZE,
-            tip_distribution_program_id,
-        );
+        let mut account_data =
+            AccountSharedData::new(lamports, TIP_DISTRIBUTION_SIZE, tip_distribution_program_id);
 
-        let mut data: [u8; TipDistributionAccount::SIZE] = [0u8; TipDistributionAccount::SIZE];
+        let mut data: [u8; TIP_DISTRIBUTION_SIZE] = [0u8; TIP_DISTRIBUTION_SIZE];
         let mut cursor = std::io::Cursor::new(&mut data[..]);
         tda.try_serialize(&mut cursor).unwrap();
 

@@ -8,7 +8,8 @@ pub mod process_epoch;
 
 use anchor_lang::prelude::*;
 
-use jito_tip_distribution::state::TipDistributionAccount;
+use anchor_lang::prelude::*;
+use jito_tip_distribution_sdk::{TipDistributionAccount, TIP_DISTRIBUTION_SEED};
 use jito_tip_payment::{
     CONFIG_ACCOUNT_SEED, TIP_ACCOUNT_SEED_0, TIP_ACCOUNT_SEED_1, TIP_ACCOUNT_SEED_2,
     TIP_ACCOUNT_SEED_3, TIP_ACCOUNT_SEED_4, TIP_ACCOUNT_SEED_5, TIP_ACCOUNT_SEED_6,
@@ -63,7 +64,7 @@ pub fn derive_tip_distribution_account_address(
 ) -> (Pubkey, u8) {
     Pubkey::find_program_address(
         &[
-            TipDistributionAccount::SEED,
+            TIP_DISTRIBUTION_SEED,
             vote_pubkey.to_bytes().as_ref(),
             epoch.to_le_bytes().as_ref(),
         ],
