@@ -53,7 +53,7 @@ pub struct GeneratedMerkleTree {
 }
 
 impl GeneratedMerkleTreeCollection {
-    pub async fn new_from_stake_meta_collection(
+    pub fn new_from_stake_meta_collection(
         stake_meta_coll: StakeMetaCollection,
         protocol_fee_bps: u16,
     ) -> Result<Self, MerkleRootGeneratorError> {
