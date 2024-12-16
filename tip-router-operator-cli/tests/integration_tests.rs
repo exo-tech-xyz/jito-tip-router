@@ -218,7 +218,74 @@ async fn test_up_to_cast_vote() -> Result<(), Box<dyn std::error::Error>> {
     let out_path = "tests/fixtures/output.json";
     let tip_payment_program_id = &TIP_PAYMENT_ID;
 
-    let mut stake_meta_collection = generate_stake_meta(
+    // New function that handles all steps up to cast vote
+    let meta_merkle_tree = get_merkle_root(
+        ledger_path,
+        account_paths,
+        full_snapshots_path,
+        desired_slot,
+        tip_distribution_program_id,
+        out_path,
+        tip_payment_program_id,
+        300, // PROTOCOL_FEE_BPS
+    )?;
+
+    // Verify the merkle root
+    assert!(
+        meta_merkle_tree.merkle_root != [0u8; 32],
+        "Meta merkle tree has zero root"
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_up_to_cast_vote() -> Result<(), Box<dyn std::error::Error>> {
+    let ledger_path = Path::new("tests/fixtures/test-ledger");
+    let account_paths = vec![
+        PathBuf::from("tests/fixtures/accounts"),
+        PathBuf::from("path/to/account2"),
+    ];
+    let full_snapshots_path = PathBuf::from("path/to/full_snapshots");
+    let desired_slot = &144;
+    let tip_distribution_program_id = &TIP_DISTRIBUTION_ID;
+    let out_path = "tests/fixtures/output.json";
+    let tip_payment_program_id = &TIP_PAYMENT_ID;
+
+    // New function that handles all steps up to cast vote
+    let meta_merkle_tree = get_merkle_root(
+        ledger_path,
+        account_paths,
+        full_snapshots_path,
+        desired_slot,
+        tip_distribution_program_id,
+        out_path,
+        tip_payment_program_id,
+        300, // PROTOCOL_FEE_BPS
+    )?;
+
+    // Verify the merkle root
+    assert!(
+        meta_merkle_tree.merkle_root != [0u8; 32],
+        "Meta merkle tree has zero root"
+    );
+
+    Ok(())
+}
+
+// This function would be defined in your main code, not in tests
+pub fn get_merkle_root(
+    ledger_path: &Path,
+    account_paths: Vec<PathBuf>,
+    full_snapshots_path: PathBuf,
+    desired_slot: &u64,
+    tip_distribution_program_id: &Pubkey,
+    out_path: &str,
+    tip_payment_program_id: &Pubkey,
+    protocol_fee_bps: u16,
+) -> Result<MetaMerkleTree, Box<dyn std::error::Error>> {
+    // Get stake meta collection
+    let mut stake_meta_collection = get_bank_from_ledger(
         ledger_path,
         account_paths,
         full_snapshots_path,
@@ -228,10 +295,18 @@ async fn test_up_to_cast_vote() -> Result<(), Box<dyn std::error::Error>> {
         tip_payment_program_id,
     )?;
 
-    // Verify the merkle root, meta_merkle_tree.merkle_root != [0u8; 32]
-    assert!("9320239uruj23jblahblah", "Meta merkle tree has zero root");
+    // Generate merkle tree collection
+    let merkle_tree_coll = GeneratedMerkleTreeCollection::new_from_stake_meta_collection(
+        stake_meta_collection,
+        protocol_fee_bps,
+    )?;
 
-    Ok(())
+    // Convert to MetaMerkleTree
+    let meta_merkle_tree = MetaMerkleTree::new_from_generated_merkle_tree_collection(
+        merkle_tree_coll
+    )?;
+
+    Ok(meta_merkle_tree)
 }
 
 #[tokio::test]
