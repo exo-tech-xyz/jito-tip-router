@@ -34,6 +34,7 @@ use tip_router_operator_cli::{
     claim_mev_workflow, merkle_root_generator_workflow, merkle_root_upload_workflow, process_epoch,
     stake_meta_generator_workflow::generate_stake_meta, Cli, Commands, TipAccountConfig,
 };
+use log::info;
 
 struct TestContext {
     pub context: ProgramTestContext,
@@ -229,6 +230,8 @@ async fn test_up_to_cast_vote() -> Result<(), Box<dyn std::error::Error>> {
         out_path,
         tip_payment_program_id,
     )?;
+
+    info!("Stake meta collection: {:?}", stake_meta_collection);
 
     // Add assertions or further test logic here
     // For example, you might want to check the contents of stake_meta_collection
