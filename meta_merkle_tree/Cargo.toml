@@ -24,6 +24,7 @@ jito-tip-distribution = { workspace = true }
 jito-tip-payment = { workspace = true }
 jito-vault-core = { workspace = true }
 jito-vault-sdk = { workspace = true }
+log = { workspace = true }
 rand = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

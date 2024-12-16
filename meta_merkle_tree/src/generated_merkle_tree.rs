@@ -14,6 +14,7 @@ use jito_tip_distribution::{
 };
 use jito_tip_payment::CONFIG_ACCOUNT_SEED;
 use anchor_lang::Id;
+use log::info;
 
 #[derive(Error, Debug)]
 pub enum MerkleRootGeneratorError {
@@ -150,9 +151,9 @@ impl TreeNode {
                 .and_then(|v| v.checked_sub(validator_amount))
                 .ok_or(MerkleRootGeneratorError::CheckedMathError)?;
 
-            println!("Protocol Fee Amount: {}", protocol_fee_amount);
-            println!("Validator Amount: {}", validator_amount);
-            println!("Remaining Total Rewards: {}", remaining_total_rewards);
+            info!("Protocol Fee Amount: {}", protocol_fee_amount);
+            info!("Validator Amount: {}", validator_amount);
+            info!("Remaining Total Rewards: {}", remaining_total_rewards);
 
             let (protocol_fee_recipient, _) = Pubkey::find_program_address(
                 &[b"protocol_fee", &(0u64).to_le_bytes()],
@@ -681,13 +682,13 @@ mod tests {
                 .find(|gmt| gmt.tip_distribution_account == expected_gmt.tip_distribution_account)
                 .unwrap();
 
-            println!("Expected nodes:");
+            info!("Expected nodes:");
             for node in &expected_gmt.tree_nodes {
-                println!("Claimant: {}, Amount: {}", node.claimant, node.amount);
+                info!("Claimant: {}, Amount: {}", node.claimant, node.amount);
             }
-            println!("\nActual nodes:");
+            info!("\nActual nodes:");
             for node in &actual_gmt.tree_nodes {
-                println!("Claimant: {}, Amount: {}", node.claimant, node.amount);
+                info!("Claimant: {}, Amount: {}", node.claimant, node.amount);
             }
 
             assert_eq!(expected_gmt.max_num_nodes, actual_gmt.max_num_nodes);

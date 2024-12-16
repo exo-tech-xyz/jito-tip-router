@@ -3681,6 +3681,7 @@ dependencies = [
  "jito-tip-payment",
  "jito-vault-core",
  "jito-vault-sdk",
+ "log",
  "rand 0.8.5",
  "serde",
  "serde_json",
