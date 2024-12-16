@@ -1,6 +1,4 @@
-use solana_accounts_db::hardened_unpack::{
-    open_genesis_config, MAX_GENESIS_ARCHIVE_UNPACKED_SIZE,
-};
+use solana_accounts_db::hardened_unpack::{open_genesis_config, MAX_GENESIS_ARCHIVE_UNPACKED_SIZE};
 use solana_ledger::{
     bank_forks_utils::{self},
     blockstore::{Blockstore, BlockstoreError},
@@ -29,7 +27,8 @@ pub fn get_bank_from_ledger(
     full_snapshots_path: PathBuf,
     desired_slot: &Slot,
 ) -> Arc<Bank> {
-    let genesis_config = open_genesis_config(ledger_path, MAX_GENESIS_ARCHIVE_UNPACKED_SIZE).unwrap();
+    let genesis_config =
+        open_genesis_config(ledger_path, MAX_GENESIS_ARCHIVE_UNPACKED_SIZE).unwrap();
     // Error handling is a modified copy pasta from ledger utils
     let blockstore = match Blockstore::open_with_options(
         ledger_path,
@@ -122,7 +121,6 @@ pub fn get_bank_from_ledger(
     working_bank
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -133,8 +131,12 @@ mod tests {
         let account_paths = vec![ledger_path.join("accounts/run")];
         let full_snapshots_path = PathBuf::from(ledger_path.clone());
         let desired_slot = 144;
-        let res = get_bank_from_ledger(&ledger_path, account_paths, full_snapshots_path, &desired_slot);
+        let res = get_bank_from_ledger(
+            &ledger_path,
+            account_paths,
+            full_snapshots_path,
+            &desired_slot,
+        );
         assert_eq!(res.slot(), desired_slot);
     }
-
 }

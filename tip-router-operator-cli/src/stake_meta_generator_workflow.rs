@@ -73,7 +73,7 @@ impl Display for StakeMetaGeneratorError {
     }
 }
 
-/// Creates a bank from the paths at the desired slot and generates the StakeMetaCollection for 
+/// Creates a bank from the paths at the desired slot and generates the StakeMetaCollection for
 /// that slot. Optionally writing the result as JSON file to disk.
 pub fn generate_stake_meta(
     ledger_path: &Path,
@@ -318,6 +318,7 @@ fn group_delegations_by_voter_pubkey(
 
 #[cfg(test)]
 mod tests {
+    use solana_stake_program::stake_state;
     use {
         super::*,
         crate::derive_tip_distribution_account_address,
@@ -346,7 +347,6 @@ mod tests {
         },
         solana_stake_program::stake_state,
     };
-    use solana_stake_program::stake_state;
 
     use super::*;
     use crate::derive_tip_distribution_account_address;
