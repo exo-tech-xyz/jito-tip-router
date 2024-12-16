@@ -32,8 +32,8 @@ use solana_sdk::{
 use tempfile::TempDir;
 use thiserror::Error;
 use tip_router_operator_cli::{
-    claim_mev_workflow, merkle_root_generator_workflow, merkle_root_upload_workflow, process_epoch,
-    stake_meta_generator_workflow::generate_stake_meta, Cli, Commands, TipAccountConfig,
+    process_epoch,
+    stake_meta_generator::generate_stake_meta, Cli, Commands, TipAccountConfig,
 };
 
 struct TestContext {
@@ -234,11 +234,10 @@ async fn test_up_to_cast_vote() -> Result<(), Box<dyn std::error::Error>> {
     info!("Stake meta collection: {:?}", stake_meta_collection);
 
     // Generate merkle root
-    let merkle_tree_coll = merkle_root_generator_workflow::generate_merkle_root(
+    let merkle_tree_coll = MetaMerkleTreeCollection::new_from_stake_meta_collection(
         stake_meta_collection.clone(),
         PROTOCOL_FEE_BPS,
-    )
-    .await?;
+    )?;
 
     // Add assertions to verify the merkle tree collection
     assert!(
