@@ -13,8 +13,8 @@ use jito_tip_payment::{self, ID as TIP_PAYMENT_ID};
 use log::info;
 use meta_merkle_tree::{
     generated_merkle_tree::{
-        Delegation, GeneratedMerkleTreeCollection as MetaMerkleTreeCollection,
-        MerkleRootGeneratorError, StakeMeta, StakeMetaCollection, TipDistributionMeta,
+        Delegation, GeneratedMerkleTreeCollection, MerkleRootGeneratorError, StakeMeta,
+        StakeMetaCollection, TipDistributionMeta,
     },
     meta_merkle_tree::MetaMerkleTree,
 };
@@ -32,8 +32,7 @@ use solana_sdk::{
 use tempfile::TempDir;
 use thiserror::Error;
 use tip_router_operator_cli::{
-    process_epoch,
-    stake_meta_generator::generate_stake_meta, Cli, Commands, TipAccountConfig,
+    process_epoch, stake_meta_generator::generate_stake_meta, Cli, Commands, TipAccountConfig,
 };
 
 struct TestContext {
@@ -310,10 +309,10 @@ async fn test_merkle_tree_generation() -> Result<(), Box<dyn std::error::Error>>
     let remaining_tips = TOTAL_TIPS - protocol_fee_amount - validator_fee_amount;
 
     // Then use it in generate_merkle_root
-    let merkle_tree_coll = MetaMerkleTreeCollection::new_from_stake_meta_collection(
+    let merkle_tree_coll = GeneratedMerkleTreeCollection::new_from_stake_meta_collection(
         stake_meta_collection.clone(),
         PROTOCOL_FEE_BPS,
-    ).unwrap();
+    )?;
 
     let generated_tree = &merkle_tree_coll.generated_merkle_trees[0];
 
