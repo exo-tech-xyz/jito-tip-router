@@ -1,11 +1,10 @@
-use {
-    log::*,
-    meta_merkle_tree::generated_merkle_tree::{
-        GeneratedMerkleTreeCollection, MerkleRootGeneratorError, StakeMetaCollection,
-    },
-    std::fmt::Debug,
-    thiserror::Error,
+use std::fmt::Debug;
+
+use log::*;
+use meta_merkle_tree::generated_merkle_tree::{
+    GeneratedMerkleTreeCollection, MerkleRootGeneratorError, StakeMetaCollection,
 };
+use thiserror::Error;
 
 pub async fn generate_merkle_root(
     stake_meta_coll: StakeMetaCollection,

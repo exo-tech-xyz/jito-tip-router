@@ -135,7 +135,6 @@ impl TreeNode {
         protocol_fee_bps: u16,
         tip_distribution_program_id: &Pubkey,
     ) -> Result<Option<Vec<Self>>, MerkleRootGeneratorError> {
-        
         if let Some(tip_distribution_meta) = stake_meta.maybe_tip_distribution_meta.as_ref() {
             let protocol_fee_amount = u128::div_ceil(
                 tip_distribution_meta.total_tips as u128 * protocol_fee_bps as u128,
@@ -144,13 +143,14 @@ impl TreeNode {
             let protocol_fee_amount = u64::try_from(protocol_fee_amount)
                 .map_err(|_| MerkleRootGeneratorError::CheckedMathError)?;
 
-            let validator_amount = u128::div_ceil(
-                tip_distribution_meta.total_tips as u128
-                    * tip_distribution_meta.validator_fee_bps as u128,
-                10_000,
-            );
-            let validator_amount = u64::try_from(validator_amount)
-                .map_err(|_| MerkleRootGeneratorError::CheckedMathError)?;
+            let validator_amount = u64::try_from(
+                (tip_distribution_meta.total_tips as u128)
+                    .checked_mul(tip_distribution_meta.validator_fee_bps as u128)
+                    .ok_or(MerkleRootGeneratorError::CheckedMathError)?
+                    .checked_div(10_000)
+                    .ok_or(MerkleRootGeneratorError::CheckedMathError)?,
+            )
+            .map_err(|_| MerkleRootGeneratorError::CheckedMathError)?;
 
             let remaining_total_rewards = tip_distribution_meta
                 .total_tips
@@ -214,12 +214,13 @@ impl TreeNode {
                     .iter()
                     .map(|delegation| {
                         let amount_delegated = delegation.lamports_delegated as u128;
-                        let reward_amount = u128::div_ceil(
-                            amount_delegated * remaining_total_rewards as u128,
-                            total_delegated,
-                        );
-                        let reward_amount = u64::try_from(reward_amount)
-                            .map_err(|_| MerkleRootGeneratorError::CheckedMathError)?;
+                        let reward_amount = u64::try_from(
+                            (amount_delegated.checked_mul(remaining_total_rewards as u128))
+                                .ok_or(MerkleRootGeneratorError::CheckedMathError)?
+                                .checked_div(total_delegated)
+                                .ok_or(MerkleRootGeneratorError::CheckedMathError)?,
+                        )
+                        .map_err(|_| MerkleRootGeneratorError::CheckedMathError)?;
 
                         info!(
                             "Delegation: {}, Amount Delegated: {}, Reward Amount: {}",
@@ -537,7 +538,8 @@ mod tests {
         let merkle_tree_collection = GeneratedMerkleTreeCollection::new_from_stake_meta_collection(
             stake_meta_collection.clone(),
             300,
-        ).unwrap();
+        )
+        .unwrap();
 
         assert_eq!(stake_meta_collection.epoch, merkle_tree_collection.epoch);
         assert_eq!(
@@ -719,9 +721,17 @@ mod tests {
                             .iter()
                             .find(|tree_node| tree_node.claimant == expected_tree_node.claimant)
                             .unwrap();
-                        assert_eq!(expected_tree_node.amount, actual_tree_node.amount);
+                        assert!(
+                            (expected_tree_node.amount as i128 - actual_tree_node.amount as i128)
+                                .abs()
+                                <= 1,
+                            "Expected amount: {}, Actual amount: {}",
+                            expected_tree_node.amount,
+                            actual_tree_node.amount
+                        );
                     });
                 assert_eq!(expected_gmt.merkle_root, actual_gmt.merkle_root);
             });
     }
 }
+

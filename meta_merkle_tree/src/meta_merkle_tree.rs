@@ -6,9 +6,10 @@ use std::{
     result,
 };
 
+use log::info;
 use serde::{Deserialize, Serialize};
 use solana_program::{hash::hashv, pubkey::Pubkey};
-use log::info;
+
 use crate::{
     error::MerkleTreeError::{self, MerkleValidationError},
     generated_merkle_tree::GeneratedMerkleTreeCollection,

@@ -11,7 +11,10 @@ use ellipsis_client::EllipsisClient;
 use jito_tip_distribution::{self, state::Config, ID as TIP_DISTRIBUTION_ID};
 use jito_tip_payment::{self, ID as TIP_PAYMENT_ID};
 use meta_merkle_tree::{
-    generated_merkle_tree::{GeneratedMerkleTreeCollection as MetaMerkleTreeCollection, StakeMetaCollection, MerkleRootGeneratorError, StakeMeta, TipDistributionMeta, Delegation},
+    generated_merkle_tree::{
+        Delegation, GeneratedMerkleTreeCollection as MetaMerkleTreeCollection,
+        MerkleRootGeneratorError, StakeMeta, StakeMetaCollection, TipDistributionMeta,
+    },
     meta_merkle_tree::MetaMerkleTree,
 };
 use solana_client::rpc_client::RpcClient;
