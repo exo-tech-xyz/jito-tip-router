@@ -119,7 +119,7 @@ mod set_merkle_root {
         };
 
         let collection =
-            GeneratedMerkleTreeCollection::new_from_stake_meta_collection(stake_meta_collection)
+            GeneratedMerkleTreeCollection::new_from_stake_meta_collection(stake_meta_collection, 300)
                 .map_err(TestError::from)?;
 
         let test_tip_distribution_account = derive_tip_distribution_account_address(

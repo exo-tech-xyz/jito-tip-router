@@ -11,7 +11,7 @@ use ellipsis_client::EllipsisClient;
 use jito_tip_distribution::{self, state::Config, ID as TIP_DISTRIBUTION_ID};
 use jito_tip_payment::{self, ID as TIP_PAYMENT_ID};
 use meta_merkle_tree::{
-    generated_merkle_tree::GeneratedMerkleTreeCollection as MetaMerkleTreeCollection,
+    generated_merkle_tree::{GeneratedMerkleTreeCollection as MetaMerkleTreeCollection, StakeMetaCollection, MerkleRootGeneratorError, StakeMeta, TipDistributionMeta, Delegation},
     meta_merkle_tree::MetaMerkleTree,
 };
 use solana_client::rpc_client::RpcClient;
@@ -29,8 +29,7 @@ use tempfile::TempDir;
 use thiserror::Error;
 use tip_router_operator_cli::{
     claim_mev_workflow, merkle_root_generator_workflow, merkle_root_upload_workflow, process_epoch,
-    Cli, Commands, Delegation, GeneratedMerkleTreeCollection as TipRouterMerkleTreeCollection,
-    StakeMeta, StakeMetaCollection, TipAccountConfig, TipDistributionMeta,
+    Cli, Commands, TipAccountConfig,
 };
 
 struct TestContext {
@@ -203,26 +202,8 @@ impl TestContext {
     }
 }
 
-#[derive(Error, Debug)]
-pub enum MerkleTreeTestError {
-    #[error(transparent)]
-    ProgramTestError(#[from] ProgramTestError),
-
-    #[error(transparent)]
-    IoError(#[from] std::io::Error),
-
-    #[error(transparent)]
-    BanksClientError(#[from] BanksClientError),
-
-    #[error(transparent)]
-    MerkleRootGeneratorError(#[from] merkle_root_generator_workflow::MerkleRootGeneratorError),
-
-    #[error("Other error: {0}")]
-    Other(Box<dyn std::error::Error>),
-}
-
 #[tokio::test]
-async fn test_merkle_tree_generation() -> Result<(), MerkleTreeTestError> {
+async fn test_merkle_tree_generation() -> Result<(), Box<dyn std::error::Error>> {
     // Constants
     const PROTOCOL_FEE_BPS: u16 = 300;
     const VALIDATOR_FEE_BPS: u16 = 1000;
@@ -230,7 +211,7 @@ async fn test_merkle_tree_generation() -> Result<(), MerkleTreeTestError> {
 
     let mut test_context = TestContext::new()
         .await
-        .map_err(|e| MerkleTreeTestError::Other(e))?;
+        .map_err(|e| MerkleRootGeneratorError::MerkleTreeTestError)?;
 
     // Get config PDA
     let (config_pda, bump) = Pubkey::find_program_address(&[b"config"], &TIP_DISTRIBUTION_ID);

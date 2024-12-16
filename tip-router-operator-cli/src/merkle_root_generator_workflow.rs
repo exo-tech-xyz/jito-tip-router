@@ -5,7 +5,6 @@ use {
     },
     std::fmt::Debug,
     thiserror::Error,
-    // ellipsis_client::EllipsisClient,
 };
 
 pub async fn generate_merkle_root(
@@ -15,8 +14,7 @@ pub async fn generate_merkle_root(
     let merkle_tree_coll = GeneratedMerkleTreeCollection::new_from_stake_meta_collection(
         stake_meta_coll,
         protocol_fee_bps,
-    )
-    .await?;
+    )?;
 
     Ok(merkle_tree_coll)
 }

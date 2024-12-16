@@ -5,7 +5,7 @@ use jito_tip_distribution::{
     program::JitoTipDistribution,
     state::{ClaimStatus, TipDistributionAccount},
 };
-use jito_tip_distribution_sdk::{CLAIM_STATUS_SEED};
+use jito_tip_distribution_sdk::CLAIM_STATUS_SEED;
 use jito_tip_payment::CONFIG_ACCOUNT_SEED;
 use log::info;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -28,6 +28,10 @@ pub enum MerkleRootGeneratorError {
     IoError(#[from] std::io::Error),
     #[error(transparent)]
     SerdeJsonError(#[from] serde_json::Error),
+    #[error("MerkleRootGenerator error")]
+    MerkleRootGeneratorError,
+    #[error("MerkleTreeTestError")]
+    MerkleTreeTestError,
     #[error("Checked math error")]
     CheckedMathError,
 }
@@ -102,7 +106,7 @@ impl GeneratedMerkleTreeCollection {
             })
             .collect::<Result<Vec<_>, MerkleRootGeneratorError>>()?;
 
-        Ok(GeneratedMerkleTreeCollection {
+        Ok(Self {
             generated_merkle_trees,
             bank_hash: stake_meta_coll.bank_hash,
             epoch: stake_meta_coll.epoch,
@@ -241,7 +245,7 @@ impl TreeNode {
                             proof: None,
                         })
                     })
-                    .collect::<Result<Vec<TreeNode>, MerkleRootGeneratorError>>()?,
+                    .collect::<Result<Vec<Self>, MerkleRootGeneratorError>>()?,
             );
 
             Ok(Some(tree_nodes))
@@ -453,8 +457,8 @@ mod tests {
         assert!(merkle_proof::verify(proof, root, node.to_bytes()));
     }
 
-    #[tokio::test]
-    async fn test_new_from_stake_meta_collection_happy_path() {
+    #[test]
+    fn test_new_from_stake_meta_collection_happy_path() {
         let merkle_root_upload_authority = Pubkey::new_unique();
         let (tda_0, tda_1) = (Pubkey::new_unique(), Pubkey::new_unique());
         let stake_account_0 = Pubkey::new_unique();
@@ -534,9 +538,7 @@ mod tests {
         let merkle_tree_collection = GeneratedMerkleTreeCollection::new_from_stake_meta_collection(
             stake_meta_collection.clone(),
             300,
-        )
-        .await
-        .unwrap();
+        ).unwrap();
 
         assert_eq!(stake_meta_collection.epoch, merkle_tree_collection.epoch);
         assert_eq!(
