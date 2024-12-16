@@ -30,10 +30,7 @@ use solana_sdk::{
 };
 use tempfile::TempDir;
 use thiserror::Error;
-use tip_router_operator_cli::{
-    claim_mev_workflow, merkle_root_generator_workflow, merkle_root_upload_workflow, process_epoch,
-    Cli, Commands, TipAccountConfig,
-};
+use tip_router_operator_cli::{merkle_root_generator_workflow, Cli, Commands, TipAccountConfig};
 
 struct TestContext {
     pub context: ProgramTestContext,
