@@ -220,7 +220,7 @@ async fn test_up_to_cast_vote() -> Result<(), Box<dyn std::error::Error>> {
     let tip_payment_program_id = &TIP_PAYMENT_ID; // Replace with actual Pubkey
 
     // Call the generate_stake_meta function
-    let stake_meta_collection = generate_stake_meta(
+    let mut stake_meta_collection = generate_stake_meta(
         ledger_path,
         account_paths,
         full_snapshots_path,
@@ -232,11 +232,28 @@ async fn test_up_to_cast_vote() -> Result<(), Box<dyn std::error::Error>> {
 
     info!("Stake meta collection: {:?}", stake_meta_collection);
 
+    // Add tip distribution metadata to each stake meta
+    const TOTAL_TIPS: u64 = 1_000_000;
+    const VALIDATOR_FEE_BPS: u16 = 1000; // 10%
+
+    for stake_meta in &mut stake_meta_collection.stake_metas {
+        stake_meta.maybe_tip_distribution_meta = Some(TipDistributionMeta {
+            total_tips: TOTAL_TIPS,
+            merkle_root_upload_authority: Pubkey::new_unique(), // or use a specific authority
+            tip_distribution_pubkey: *tip_distribution_program_id,
+            validator_fee_bps: VALIDATOR_FEE_BPS,
+        });
+    }
+
+    const PROTOCOL_FEE_BPS: u16 = 300;
+
     // Generate merkle root
-    let merkle_tree_coll = MetaMerkleTreeCollection::new_from_stake_meta_collection(
+    let merkle_tree_coll = GeneratedMerkleTreeCollection::new_from_stake_meta_collection(
         stake_meta_collection.clone(),
         PROTOCOL_FEE_BPS,
     )?;
+
+    info!("Merkle tree collection: {:?}", merkle_tree_coll);
 
     // Add assertions to verify the merkle tree collection
     assert!(
