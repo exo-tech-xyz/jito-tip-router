@@ -89,6 +89,7 @@ setup_test_validator
 echo "Creating vote accounts, these accounts be added to the stake pool"
 create_vote_accounts "$max_validators" "$validator_file"
 
+
 echo "Done adding $max_validators validator vote accounts, their pubkeys can be found in $validator_file"
 
 # SETUP Stake Pool (https://spl.solana.com/stake-pool/quickstart#step-1-create-the-stake-pool)
@@ -171,6 +172,6 @@ while true
 do
 current_slot=$(solana slot --url http://localhost:8899)
 echo "current slot $current_slot"
-[[ $current_slot -gt $DESIRED_SLOT ]] && kill $VALIDATOR_PID && exit 0
+# [[ $current_slot -gt $DESIRED_SLOT ]] && kill $VALIDATOR_PID && exit 0
 sleep 5
 done

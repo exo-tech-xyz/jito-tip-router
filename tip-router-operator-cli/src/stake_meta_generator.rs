@@ -214,6 +214,9 @@ pub fn generate_stake_meta_collection(
                 bank.epoch(),
             )
             .0;
+
+            info!("Derived TDA address: {}", tip_distribution_pubkey);
+
             let tda = if let Some(mut account_data) = bank.get_account(&tip_distribution_pubkey) {
                 // TDAs may be funded with lamports and therefore exist in the bank, but would fail the deserialization step
                 // if the buffer is yet to be allocated thru the init call to the program.

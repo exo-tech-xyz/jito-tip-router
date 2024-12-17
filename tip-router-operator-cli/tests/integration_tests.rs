@@ -221,7 +221,7 @@ async fn test_up_to_cast_vote() {
     let tip_payment_program_id = &TIP_PAYMENT_ID;
     const PROTOCOL_FEE_BPS: u16 = 300;
 
-    // 2. Call the function (which is currently unimplemented in src/)
+    // 2. Call the function
     let meta_merkle_tree = get_merkle_root(
         ledger_path,
         account_paths,
@@ -234,7 +234,7 @@ async fn test_up_to_cast_vote() {
     )
     .unwrap();
 
-    // 3. More comprehensive validations (these won't be reached due to panic, but good to have for when implemented)
+    // 3. More comprehensive validations
     assert_ne!(
         meta_merkle_tree.merkle_root, [0; 32],
         "Merkle root should not be zero"
