@@ -7,6 +7,8 @@ description = "CLI for Jito Tip Router"
 [dependencies]
 anchor-lang = { workspace = true }
 anyhow = { workspace = true }
+base64 = "0.13"
+hex = "0.4"
 clap = { workspace = true }
 ellipsis-client = "0.1"
 env_logger = { workspace = true }
@@ -44,5 +46,3 @@ solana-sdk = { workspace = true, features = ["dev-context-only-utils"] }
 tar = "0.4"
 tempfile = "3.2"
 bzip2 = "0.4"
-base64 = "0.13"
-hex = "0.4"
