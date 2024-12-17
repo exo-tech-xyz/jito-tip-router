@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use base64;
 use clap::Parser;
-use jito_tip_distribution_sdk::{derive_tip_distribution_account_address, TipDistributionAccount};
+use jito_tip_distribution_sdk::{derive_tip_distribution_account_address, TipDistributionAccount, TIP_DISTRIBUTION_SIZE};
 use log::info;
 use serde_json::json;
 use solana_program::pubkey::Pubkey;
@@ -62,7 +62,11 @@ fn main() {
     info!("Derived TDA address: {}", tip_distribution_pubkey);
 
     // Serialize using AnchorSerialize
-    let binary_data = account.try_to_vec().expect("Failed to serialize account");
+    let mut binary_data = [0u8; TIP_DISTRIBUTION_SIZE];
+    let dst: &mut [u8] = &mut binary_data;
+    let mut cursor = std::io::Cursor::new(dst);
+    account.try_serialize(&mut cursor).expect("Failed to serialize account");
+
 
     // Encode the binary data as base64
     let base64_data = base64::encode(&binary_data);

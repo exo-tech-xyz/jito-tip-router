@@ -41,7 +41,7 @@ prepare_keypairs_and_serialize() {
     echo "$vote_pubkey" >> "$validator_file"
 
     # Dynamically run the Rust script with the vote_pubkey
-    cargo run --bin serialize-accounts -- \
+    RUST_LOG=info cargo run --bin serialize-accounts -- \
       --validator-vote-account "$vote_pubkey" \
       --merkle-root-upload-authority "$merkle_root_upload_authority" \
       --epoch-created-at 4 \
@@ -50,11 +50,6 @@ prepare_keypairs_and_serialize() {
       --bump 1
   done
 }
-
-# # Clear the old validator list file if it exists
-# if test -f "$validator_file"; then
-#   rm "$validator_file"
-# fi
 
 # Function to create vote accounts
 create_vote_accounts() {
@@ -200,6 +195,8 @@ add_validator_stakes "$stake_pool_pubkey" "$validator_file"
 echo "Increasing amount delegated to each validator in stake pool"
 increase_stakes "$stake_pool_pubkey" "$validator_file" "$stake_per_validator"
 
+# Clear the validator vote pubkey file so it doesn't expand and cause errors next run
+echo "" > "$validator_file"
 
 # wait for certain epoch
 echo "waiting for epoch X from validator $VALIDATOR_PID"
@@ -207,6 +204,6 @@ while true
 do
 current_slot=$(solana slot --url http://localhost:8899)
 echo "current slot $current_slot"
-# [[ $current_slot -gt $DESIRED_SLOT ]] && kill $VALIDATOR_PID && exit 0
+[[ $current_slot -gt $DESIRED_SLOT ]] && kill $VALIDATOR_PID && exit 0
 sleep 5
 done
