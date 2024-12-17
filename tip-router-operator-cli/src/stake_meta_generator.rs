@@ -251,30 +251,60 @@ pub fn generate_stake_meta_collection(
 
     let mut stake_metas = vec![];
     for ((vote_pubkey, vote_account), maybe_tda) in vote_pk_and_maybe_tdas {
+        info!("Processing vote account with pubkey: {}", vote_pubkey);
+
         if let Some(mut delegations) = voter_pubkey_to_delegations.get(&vote_pubkey).cloned() {
+            info!("Found delegations for vote_pubkey: {}", vote_pubkey);
+            info!("Number of delegations: {}", delegations.len());
+
             let total_delegated = delegations.iter().fold(0u64, |sum, delegation| {
-                sum.checked_add(delegation.lamports_delegated).unwrap()
+                let new_sum = sum.checked_add(delegation.lamports_delegated).unwrap();
+                info!(
+                    "Adding delegation: {} lamports, new total: {}",
+                    delegation.lamports_delegated, new_sum
+                );
+                new_sum
             });
 
             let maybe_tip_distribution_meta = if let Some(tda) = maybe_tda {
                 let actual_len = tda.account_data.data().len();
                 let expected_len = 8_usize.saturating_add(size_of::<TipDistributionAccount>());
+
+                info!(
+                    "Processing TDA with pubkey: {}",
+                    tda.tip_distribution_pubkey
+                );
+                info!("Actual data length: {}", actual_len);
+                info!("Expected data length: {}", expected_len);
+
                 if actual_len != expected_len {
                     warn!("len mismatch actual={actual_len}, expected={expected_len}");
                 }
+
                 let rent_exempt_amount =
                     bank.get_minimum_balance_for_rent_exemption(tda.account_data.data().len());
+                info!("Calculated rent exempt amount: {}", rent_exempt_amount);
 
                 Some(tip_distributuon_account_from_tda_wrapper(
                     tda,
                     rent_exempt_amount,
                 )?)
             } else {
+                info!(
+                    "No TDA found for vote_pubkey: {}, returning None for tip distribution meta.",
+                    vote_pubkey
+                );
                 None
             };
 
             let vote_state = vote_account.vote_state().unwrap();
+            info!("Vote state retrieved for vote_pubkey: {}", vote_pubkey);
+            info!("Validator node pubkey: {}", vote_state.node_pubkey);
+            info!("Commission: {}", vote_state.commission);
+
             delegations.sort();
+            info!("Delegations sorted for vote_pubkey: {}", vote_pubkey);
+
             stake_metas.push(StakeMeta {
                 maybe_tip_distribution_meta,
                 validator_node_pubkey: vote_state.node_pubkey,
@@ -283,6 +313,7 @@ pub fn generate_stake_meta_collection(
                 total_delegated,
                 commission: vote_state.commission,
             });
+            info!("StakeMeta added for vote_pubkey: {}", vote_pubkey);
         } else {
             warn!(
                 "voter_pubkey not found in voter_pubkey_to_delegations map [validator_vote_pubkey={}]",
