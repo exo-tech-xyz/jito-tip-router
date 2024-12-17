@@ -2,17 +2,23 @@
 output_dir="tests/fixtures/accounts"
 mkdir -p "$output_dir"
 
-initialize_tda_accounts () {
-  for vote_pubkey in $(cat "$validator_file"); do
-    # Derive the TDA address
-    tda_address=$(solana-keygen pubkey "$keys_dir/tda_$vote_pubkey.json")
+validator_vote_account="YourValidatorVoteAccountPubkey"
+merkle_root_upload_authority="YourMerkleRootUploadAuthorityPubkey"
+merkle_root="OptionalMerkleRootInHex"
+epoch_created_at=0
+validator_commission_bps=100
+expires_at=1000
+bump=1
 
-    # Create and fund the TDA account
-    solana transfer "$tda_address" 1 --allow-unfunded-recipient --url http://127.0.0.1:8899
-
-    echo "Initialized TDA account: $tda_address"
-  done
-}
+# Call the Rust script
+cargo run -- \
+  --validator-vote-account "$validator_vote_account" \
+  --merkle-root-upload-authority "$merkle_root_upload_authority" \
+  --merkle-root "$merkle_root" \
+  --epoch-created-at "$epoch_created_at" \
+  --validator-commission-bps "$validator_commission_bps" \
+  --expires-at "$expires_at" \
+  --bump "$bump"
 
 # Function to download account data
 download_account_data() {
