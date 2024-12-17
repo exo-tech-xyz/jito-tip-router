@@ -33,8 +33,8 @@ use solana_sdk::{
 use tempfile::TempDir;
 use thiserror::Error;
 use tip_router_operator_cli::{
-    ledger_utils::get_bank_from_ledger, process_epoch, stake_meta_generator::generate_stake_meta,
-    Cli, Commands, TipAccountConfig, get_merkle_root
+    get_merkle_root, ledger_utils::get_bank_from_ledger, process_epoch,
+    stake_meta_generator::generate_stake_meta, Cli, Commands, TipAccountConfig,
 };
 struct TestContext {
     pub context: ProgramTestContext,
@@ -232,7 +232,8 @@ async fn test_up_to_cast_vote() {
         out_path,
         tip_payment_program_id,
         PROTOCOL_FEE_BPS,
-    ).unwrap();
+    )
+    .unwrap();
 
     // 3. This won't be reached due to the panic, but keeping for future implementation
     assert!(
