@@ -15,6 +15,7 @@ use jito_tip_payment::{
     TIP_ACCOUNT_SEED_3, TIP_ACCOUNT_SEED_4, TIP_ACCOUNT_SEED_5, TIP_ACCOUNT_SEED_6,
     TIP_ACCOUNT_SEED_7,
 };
+use log::info;
 use meta_merkle_tree::generated_merkle_tree::GeneratedMerkleTreeCollection;
 use meta_merkle_tree::generated_merkle_tree::MerkleRootGeneratorError;
 use meta_merkle_tree::meta_merkle_tree::MetaMerkleTree;
@@ -106,6 +107,8 @@ pub fn get_merkle_root(
     )
     .map_err(|_| MerkleRootError::StakeMetaGeneratorError("Failed to generate stake meta"))?;
 
+    info!("Stake meta collection: {:?}", stake_meta_collection);
+
     // Generate merkle tree collection
     let merkle_tree_coll = GeneratedMerkleTreeCollection::new_from_stake_meta_collection(
         stake_meta_collection,
@@ -115,10 +118,15 @@ pub fn get_merkle_root(
         MerkleRootError::MerkleRootGeneratorError("Failed to generate merkle tree collection")
     })?;
 
-    // Convert to MetaMerkleTree
-    let meta_merkle_tree =
-        MetaMerkleTree::new_from_generated_merkle_tree_collection(merkle_tree_coll)
-            .map_err(|_| MerkleRootError::MerkleTreeError("Failed to create meta merkle tree"))?;
+    info!("Merkle tree collection: {:?}", merkle_tree_coll);
 
+    // Convert to MetaMerkleTree
+    let meta_merkle_tree = MetaMerkleTree::new_from_generated_merkle_tree_collection(
+        merkle_tree_coll,
+    )
+    .map_err(|e| {
+        info!("Meta merkle tree creation error: {:?}", e);
+        MerkleRootError::MerkleTreeError("Failed to create meta merkle tree")
+    })?;
     Ok(meta_merkle_tree)
 }

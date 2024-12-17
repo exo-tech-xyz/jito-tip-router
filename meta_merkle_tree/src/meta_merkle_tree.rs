@@ -74,12 +74,24 @@ impl MetaMerkleTree {
     pub fn new_from_generated_merkle_tree_collection(
         generated_merkle_tree_collection: GeneratedMerkleTreeCollection,
     ) -> Result<Self> {
-        let tree_nodes = generated_merkle_tree_collection
+        info!("Starting new_from_generated_merkle_tree_collection");
+        info!("Collection contains {} trees", generated_merkle_tree_collection.generated_merkle_trees.len());
+        
+        let tree_nodes: Vec<TreeNode> = generated_merkle_tree_collection
             .generated_merkle_trees
             .into_iter()
             .map(TreeNode::from)
             .collect();
-        Self::new(tree_nodes)
+            
+        info!("Created {} tree nodes", tree_nodes.len());
+        
+        let result = Self::new(tree_nodes);
+        
+        if let Err(ref e) = result {
+            info!("Failed to create MetaMerkleTree: {:?}", e);
+        }
+        
+        result
     }
 
     // TODO if we need to load this from a file (for operator?)
