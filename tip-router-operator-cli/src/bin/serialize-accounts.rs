@@ -2,12 +2,12 @@ use anchor_lang::prelude::*;
 use base64;
 use clap::Parser;
 use jito_tip_distribution_sdk::{derive_tip_distribution_account_address, TipDistributionAccount};
+use log::info;
 use serde_json::json;
 use solana_program::pubkey::Pubkey;
 use std::fs::File;
 use std::io::Write;
 use std::str::FromStr;
-
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
@@ -58,6 +58,9 @@ fn main() {
     )
     .0;
 
+    // Use the derived TDA address
+    info!("Derived TDA address: {}", tip_distribution_pubkey);
+
     // Serialize using AnchorSerialize
     let binary_data = account.try_to_vec().expect("Failed to serialize account");
 
@@ -66,7 +69,7 @@ fn main() {
 
     // Create the JSON structure
     let json_data = json!({
-        "pubkey": tip_distribution_pubkey,
+        "pubkey": tip_distribution_pubkey.to_string(),
         "account": {
             "lamports": 22451877,
             "data": [base64_data, "base64"],
@@ -88,7 +91,7 @@ fn main() {
     let mut file = File::create(&filename).unwrap();
     file.write_all(json_data.to_string().as_bytes()).unwrap();
 
-    println!(
+    info!(
         "Serialized TipDistributionAccount to JSON format in file: {}",
         filename
     );

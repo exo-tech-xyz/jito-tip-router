@@ -20,17 +20,40 @@ create_keypair () {
   fi
 }
 
-create_vote_accounts () {
+create_vote_accounts() {
   max_validators=$1
   validator_file=$2
-  for number in $(seq 1 "$max_validators")
-  do
+
+  for number in $(seq 1 "$max_validators"); do
+    # Create keypairs for identity, vote, and withdrawer
     create_keypair "$keys_dir/identity_$number.json"
     create_keypair "$keys_dir/vote_$number.json"
     create_keypair "$keys_dir/withdrawer_$number.json"
-    solana create-vote-account "$keys_dir/vote_$number.json" "$keys_dir/identity_$number.json" "$keys_dir/withdrawer_$number.json" --commission 1
+
+    # Create the vote account
+    solana create-vote-account \
+      "$keys_dir/vote_$number.json" \
+      "$keys_dir/identity_$number.json" \
+      "$keys_dir/withdrawer_$number.json" \
+      --commission 1
+
+    # Get the public key of the vote account
     vote_pubkey=$(solana-keygen pubkey "$keys_dir/vote_$number.json")
+
+    # Extract the public key from the identity keypair
+    merkle_root_upload_authority=$(solana-keygen pubkey "$keys_dir/identity_$number.json")
+
+    # Append the vote public key to the validator file
     echo "$vote_pubkey" >> "$validator_file"
+
+    # Dynamically run the Rust script with the vote_pubkey
+    cargo run --bin serialize-accounts -- \
+      --validator-vote-account "$vote_pubkey" \
+      --merkle-root-upload-authority "$merkle_root_upload_authority" \
+      --epoch-created-at 4 \
+      --validator-commission-bps 1 \
+      --expires-at 1000 \
+      --bump 1
   done
 }
 
@@ -78,17 +101,16 @@ setup_test_validator() {
 # SETUP LOCAL NET (https://spl.solana.com/stake-pool/quickstart#optional-step-0-setup-a-local-network-for-testing)
 
 echo "Setup keys directory and clear old validator list file if found"
-# if test -f "$validator_file"
-# then
-#   rm "$validator_file"
-# fi
+if test -f "$validator_file"
+then
+  rm "$validator_file"
+fi
 
 echo "Setting up local test validator"
 setup_test_validator
 
 echo "Creating vote accounts, these accounts be added to the stake pool"
 create_vote_accounts "$max_validators" "$validator_file"
-
 
 echo "Done adding $max_validators validator vote accounts, their pubkeys can be found in $validator_file"
 
@@ -134,10 +156,10 @@ stake_pool_keyfile=$keys_dir/stake-pool.json
 validator_list_keyfile=$keys_dir/validator-list.json
 mint_keyfile=$keys_dir/mint.json
 reserve_keyfile=$keys_dir/reserve.json
-# create_keypair $stake_pool_keyfile
-# create_keypair $validator_list_keyfile
-# create_keypair $mint_keyfile
-# create_keypair $reserve_keyfile
+create_keypair $stake_pool_keyfile
+create_keypair $validator_list_keyfile
+create_keypair $mint_keyfile
+create_keypair $reserve_keyfile
 
 set -ex
 $spl_stake_pool \
