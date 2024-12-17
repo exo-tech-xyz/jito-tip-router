@@ -1,7 +1,7 @@
-use clap::Parser;
 use anchor_lang::prelude::*;
-use jito_tip_distribution_sdk::TipDistributionAccount;
+use clap::Parser;
 use jito_tip_distribution_sdk::jito_tip_distribution::types::MerkleRoot;
+use jito_tip_distribution_sdk::TipDistributionAccount;
 use serde::{Deserialize, Serialize};
 use solana_program::pubkey::Pubkey;
 use std::fs::File;
