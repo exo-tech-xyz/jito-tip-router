@@ -207,7 +207,6 @@ impl TestContext {
 }
 
 #[tokio::test]
-#[should_panic(expected = "get_merkle_root not implemented")]
 async fn test_up_to_cast_vote() {
     // 1. Setup - create necessary variables/arguments
     let ledger_path = Path::new("tests/fixtures/test-ledger");
