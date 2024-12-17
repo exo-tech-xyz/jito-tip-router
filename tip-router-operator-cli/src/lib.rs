@@ -107,8 +107,6 @@ pub fn get_merkle_root(
     )
     .map_err(|_| MerkleRootError::StakeMetaGeneratorError("Failed to generate stake meta"))?;
 
-    info!("Stake meta collection: {:?}", stake_meta_collection);
-
     // Generate merkle tree collection
     let merkle_tree_coll = GeneratedMerkleTreeCollection::new_from_stake_meta_collection(
         stake_meta_collection,
@@ -117,8 +115,6 @@ pub fn get_merkle_root(
     .map_err(|_| {
         MerkleRootError::MerkleRootGeneratorError("Failed to generate merkle tree collection")
     })?;
-
-    info!("Merkle tree collection: {:?}", merkle_tree_coll);
 
     // Convert to MetaMerkleTree
     let meta_merkle_tree = MetaMerkleTree::new_from_generated_merkle_tree_collection(
