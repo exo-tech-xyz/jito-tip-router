@@ -7,7 +7,8 @@ pub use crate::process_epoch::process_epoch;
 pub mod process_epoch;
 
 use anchor_lang::prelude::*;
-
+use std::path::{Path,PathBuf};
+use meta_merkle_tree::meta_merkle_tree::MetaMerkleTree;
 use anchor_lang::prelude::*;
 use jito_tip_distribution_sdk::{TipDistributionAccount, TIP_DISTRIBUTION_SEED};
 use jito_tip_payment::{
@@ -81,6 +82,6 @@ pub fn get_merkle_root(
     out_path: &str,
     tip_payment_program_id: &Pubkey,
     protocol_fee_bps: u16,
-) -> Result<MetaMerkleTree, Box<dyn std::error::Error>> {
+) -> Result<MetaMerkleTree> {
     unimplemented!("get_merkle_root not implemented")
 }

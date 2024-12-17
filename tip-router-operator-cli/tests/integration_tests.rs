@@ -34,7 +34,7 @@ use tempfile::TempDir;
 use thiserror::Error;
 use tip_router_operator_cli::{
     ledger_utils::get_bank_from_ledger, process_epoch, stake_meta_generator::generate_stake_meta,
-    Cli, Commands, TipAccountConfig,
+    Cli, Commands, TipAccountConfig, get_merkle_root
 };
 struct TestContext {
     pub context: ProgramTestContext,
@@ -207,8 +207,38 @@ impl TestContext {
 }
 
 #[tokio::test]
-async fn test_up_to_cast_vote() -> Result<(), Box<dyn std::error::Error>> {
-    Ok(())
+#[should_panic(expected = "get_merkle_root not implemented")]
+async fn test_up_to_cast_vote() {
+    // 1. Setup - create necessary variables/arguments
+    let ledger_path = Path::new("tests/fixtures/test-ledger");
+    let account_paths = vec![
+        PathBuf::from("tests/fixtures/accounts"),
+        PathBuf::from("path/to/account2"),
+    ];
+    let full_snapshots_path = PathBuf::from("path/to/full_snapshots");
+    let desired_slot = &144;
+    let tip_distribution_program_id = &TIP_DISTRIBUTION_ID;
+    let out_path = "tests/fixtures/output.json";
+    let tip_payment_program_id = &TIP_PAYMENT_ID;
+    const PROTOCOL_FEE_BPS: u16 = 300;
+
+    // 2. Call the function (which is currently unimplemented in src/)
+    let meta_merkle_tree = get_merkle_root(
+        ledger_path,
+        account_paths,
+        full_snapshots_path,
+        desired_slot,
+        tip_distribution_program_id,
+        out_path,
+        tip_payment_program_id,
+        PROTOCOL_FEE_BPS,
+    ).unwrap();
+
+    // 3. This won't be reached due to the panic, but keeping for future implementation
+    assert!(
+        meta_merkle_tree.merkle_root != [0u8; 32],
+        "Meta merkle tree has zero root"
+    );
 }
 
 #[tokio::test]
