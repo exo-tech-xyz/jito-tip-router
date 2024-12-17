@@ -58,7 +58,7 @@ fn main() {
     let json_data = json!({
         "pubkey": args.validator_vote_account,
         "account": {
-            "lamports": 0,  // Replace with actual lamports if available
+            "lamports": 22451877,
             "data": [base64_data, "base64"],
             "owner": args.merkle_root_upload_authority,
             "executable": false,
@@ -70,7 +70,7 @@ fn main() {
     // Write the JSON data to a file
     // Use the validator_vote_account as part of the filename
     let filename = format!(
-        "tests/fixtures/accounts/tip_distribution_account_{}.json",
+        "tests/fixtures/accounts/{}.json",
         args.validator_vote_account
     );
 
