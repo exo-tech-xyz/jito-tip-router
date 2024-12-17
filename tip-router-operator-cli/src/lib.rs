@@ -71,3 +71,16 @@ pub fn derive_tip_distribution_account_address(
         tip_distribution_program_id,
     )
 }
+
+pub fn get_merkle_root(
+    ledger_path: &Path,
+    account_paths: Vec<PathBuf>,
+    full_snapshots_path: PathBuf,
+    desired_slot: &u64,
+    tip_distribution_program_id: &Pubkey,
+    out_path: &str,
+    tip_payment_program_id: &Pubkey,
+    protocol_fee_bps: u16,
+) -> Result<MetaMerkleTree, Box<dyn std::error::Error>> {
+    unimplemented!("get_merkle_root not implemented")
+}

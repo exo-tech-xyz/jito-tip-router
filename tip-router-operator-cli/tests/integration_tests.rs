@@ -211,19 +211,6 @@ async fn test_up_to_cast_vote() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-// This function would be defined in your main code, not in tests
-pub fn get_merkle_root(
-    ledger_path: &Path,
-    account_paths: Vec<PathBuf>,
-    full_snapshots_path: PathBuf,
-    desired_slot: &u64,
-    tip_distribution_program_id: &Pubkey,
-    out_path: &str,
-    tip_payment_program_id: &Pubkey,
-    protocol_fee_bps: u16,
-) -> Result<MetaMerkleTree, Box<dyn std::error::Error>> {
-}
-
 #[tokio::test]
 async fn test_merkle_tree_generation() -> Result<(), Box<dyn std::error::Error>> {
     // Constants
