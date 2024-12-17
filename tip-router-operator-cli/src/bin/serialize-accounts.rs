@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use base64;
 use clap::Parser;
-use jito_tip_distribution_sdk::TipDistributionAccount;
+use jito_tip_distribution_sdk::{derive_tip_distribution_account_address, TipDistributionAccount};
 use serde_json::json;
 use solana_program::pubkey::Pubkey;
 use std::fs::File;
@@ -48,6 +48,16 @@ fn main() {
         bump: args.bump,
     };
 
+    let tip_distribution_program_id =
+        Pubkey::from_str("4R3gSG8BpU4t19KYj8CfnbtRpnT8gtk4dvTHxVRwc2r7").unwrap(); // Replace with actual program ID
+    let current_epoch = args.epoch_created_at; // Use the epoch from args or another source
+    let tip_distribution_pubkey = derive_tip_distribution_account_address(
+        &tip_distribution_program_id,
+        &validator_vote_account,
+        current_epoch,
+    )
+    .0;
+
     // Serialize using AnchorSerialize
     let binary_data = account.try_to_vec().expect("Failed to serialize account");
 
@@ -56,7 +66,7 @@ fn main() {
 
     // Create the JSON structure
     let json_data = json!({
-        "pubkey": args.validator_vote_account,
+        "pubkey": tip_distribution_pubkey,
         "account": {
             "lamports": 22451877,
             "data": [base64_data, "base64"],
