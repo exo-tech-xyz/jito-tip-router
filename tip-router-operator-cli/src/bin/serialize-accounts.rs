@@ -1,5 +1,6 @@
 use clap::Parser;
-// use jito_tip_distribution_sdk::TipDistributionAccount;
+use anchor_lang::prelude::*;
+use jito_tip_distribution_sdk::TipDistributionAccount;
 use jito_tip_distribution_sdk::jito_tip_distribution::types::MerkleRoot;
 use serde::{Deserialize, Serialize};
 use solana_program::pubkey::Pubkey;
@@ -39,16 +40,6 @@ struct Args {
     bump: u8,
 }
 
-#[derive(Serialize, Deserialize)]
-struct TipDistributionAccount {
-    validator_vote_account: Pubkey,
-    merkle_root_upload_authority: Pubkey,
-    merkle_root: Option<[u8; 32]>, // Assuming MerkleRoot is a 32-byte array
-    epoch_created_at: u64,
-    validator_commission_bps: u16,
-    expires_at: u64,
-    bump: u8,
-}
 fn main() {
     let args = Args::parse();
 
@@ -67,8 +58,8 @@ fn main() {
         bump: args.bump,
     };
 
-    // Serialize the account to binary
-    let binary_data = bincode::serialize(&account).expect("Failed to serialize account");
+    // Serialize using AnchorSerialize
+    let binary_data = account.try_to_vec().expect("Failed to serialize account");
 
     // Encode the binary data as base64
     let base64_data = base64::encode(&binary_data);
