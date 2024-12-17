@@ -294,6 +294,33 @@ pub fn generate_stake_meta_collection(
                     "No TDA found for vote_pubkey: {}, returning None for tip distribution meta.",
                     vote_pubkey
                 );
+
+                // Additional logging to help diagnose why maybe_tda is None
+                let tip_distribution_pubkey = derive_tip_distribution_account_address(
+                    tip_distribution_program_id,
+                    &vote_pubkey,
+                    bank.epoch(),
+                )
+                .0;
+
+                if let Some(account) = bank.get_account(&tip_distribution_pubkey) {
+                    info!(
+                        "Account found for derived TDA pubkey: {}, but not a valid TDA.",
+                        tip_distribution_pubkey
+                    );
+                    info!("Account data length: {}", account.data().len());
+                    info!("Account owner: {}", account.owner());
+                    // Attempt to deserialize and log any errors
+                    match TipDistributionAccount::try_deserialize(&mut account.data()) {
+                        Ok(_) => info!("Successfully deserialized TDA data."),
+                        Err(e) => info!("Failed to deserialize TDA data: {:?}", e),
+                    }
+                } else {
+                    info!(
+                        "No account found for derived TDA pubkey: {}",
+                        tip_distribution_pubkey
+                    );
+                }
                 None
             };
 
