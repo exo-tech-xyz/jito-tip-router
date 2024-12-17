@@ -234,11 +234,39 @@ async fn test_up_to_cast_vote() {
     )
     .unwrap();
 
-    // 3. This won't be reached due to the panic, but keeping for future implementation
-    assert!(
-        meta_merkle_tree.merkle_root != [0u8; 32],
-        "Meta merkle tree has zero root"
+    // 3. More comprehensive validations (these won't be reached due to panic, but good to have for when implemented)
+    assert_ne!(
+        meta_merkle_tree.merkle_root, [0; 32],
+        "Merkle root should not be zero"
     );
+
+    // Verify structure
+    assert!(
+        meta_merkle_tree.num_nodes > 0,
+        "Should have validator nodes"
+    );
+
+    // Verify each node
+    for node in &meta_merkle_tree.tree_nodes {
+        // Verify node has required fields
+        assert_ne!(
+            node.tip_distribution_account,
+            Pubkey::default(),
+            "Node should have valid tip distribution account"
+        );
+        assert!(
+            node.max_total_claim > 0,
+            "Node should have positive max claim"
+        );
+        assert!(
+            node.max_num_nodes > 0,
+            "Node should have positive max nodes"
+        );
+        assert!(node.proof.is_some(), "Node should have a proof");
+    }
+
+    // Verify the proofs are valid
+    meta_merkle_tree.verify_proof().unwrap();
 }
 
 #[tokio::test]
