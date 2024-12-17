@@ -1,42 +1,32 @@
 use anchor_lang::prelude::*;
+use base64;
 use clap::Parser;
-use jito_tip_distribution_sdk::jito_tip_distribution::types::MerkleRoot;
 use jito_tip_distribution_sdk::TipDistributionAccount;
-use serde::{Deserialize, Serialize};
+use serde_json::json;
 use solana_program::pubkey::Pubkey;
 use std::fs::File;
 use std::io::Write;
 use std::str::FromStr;
-/// Command-line arguments for the script
+
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    /// Validator vote account
-    #[arg(short, long)]
+    #[arg(short = 'v', long)]
     validator_vote_account: String,
 
-    /// Merkle root upload authority
-    #[arg(short, long)]
+    #[arg(short = 'm', long)]
     merkle_root_upload_authority: String,
 
-    /// Merkle root (optional)
-    #[arg(short, long)]
-    merkle_root: Option<String>,
-
-    /// Epoch created at
-    #[arg(short, long)]
+    #[arg(short = 'e', long)]
     epoch_created_at: u64,
 
-    /// Validator commission basis points
-    #[arg(short, long)]
+    #[arg(short = 'c', long)]
     validator_commission_bps: u16,
 
-    /// Expires at
-    #[arg(short, long)]
+    #[arg(short = 'x', long)]
     expires_at: u64,
 
-    /// Bump
-    #[arg(short, long)]
+    #[arg(short = 'b', long)]
     bump: u8,
 }
 
@@ -64,9 +54,32 @@ fn main() {
     // Encode the binary data as base64
     let base64_data = base64::encode(&binary_data);
 
-    // Write the base64 data to a file
-    let mut file = File::create("tests/fixtures/accounts/tip_distribution_account.json").unwrap();
-    file.write_all(base64_data.as_bytes()).unwrap();
+    // Create the JSON structure
+    let json_data = json!({
+        "pubkey": args.validator_vote_account,
+        "account": {
+            "lamports": 0,  // Replace with actual lamports if available
+            "data": [base64_data, "base64"],
+            "owner": args.merkle_root_upload_authority,
+            "executable": false,
+            "rentEpoch": 0,  // Replace with actual rent epoch if available
+            "space": binary_data.len()
+        }
+    });
 
-    println!("Serialized TipDistributionAccount to base64");
+    // Write the JSON data to a file
+    // Use the validator_vote_account as part of the filename
+    let filename = format!(
+        "tests/fixtures/accounts/tip_distribution_account_{}.json",
+        args.validator_vote_account
+    );
+
+    // Write the JSON data to a unique file
+    let mut file = File::create(&filename).unwrap();
+    file.write_all(json_data.to_string().as_bytes()).unwrap();
+
+    println!(
+        "Serialized TipDistributionAccount to JSON format in file: {}",
+        filename
+    );
 }
