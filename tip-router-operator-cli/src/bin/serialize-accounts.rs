@@ -87,8 +87,8 @@ fn main() {
     // Write the JSON data to a file
     // Use the validator_vote_account as part of the filename
     let filename = format!(
-        "tests/fixtures/accounts/{}.json",
-        args.validator_vote_account
+        "tests/fixtures/tda-accounts/{}.json",
+        tip_distribution_pubkey
     );
 
     // Write the JSON data to a unique file

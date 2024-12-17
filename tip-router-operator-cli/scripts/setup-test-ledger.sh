@@ -2,6 +2,7 @@
 
 FIXTURES_DIR=tests/fixtures
 LEDGER_DIR=$FIXTURES_DIR/test-ledger
+TDA_ACCOUNT_DIR=$FIXTURES_DIR/tda-accounts
 DESIRED_SLOT=150
 max_validators=10
 validator_file=$FIXTURES_DIR/local_validators.txt
@@ -93,7 +94,16 @@ increase_stakes () {
 
 # Hoist the creation of keypairs and serialization
 echo "Preparing keypairs and serializing accounts"
+mkdir -p $FIXTURES_DIR/tda-accounts
 prepare_keypairs_and_serialize "$max_validators" "$validator_file"
+
+# Read the TDA account files and add them to args
+tda_account_args=()
+for f in "$TDA_ACCOUNT_DIR"/*; do
+  filename=$(basename $f)
+  account_address=${filename%.*}
+  tda_account_args+=( --account $account_address $f )
+done
 
 VALIDATOR_PID=
 setup_test_validator() {
@@ -102,6 +112,7 @@ setup_test_validator() {
    --bpf-program 4R3gSG8BpU4t19KYj8CfnbtRpnT8gtk4dvTHxVRwc2r7 $FIXTURES_DIR/jito_tip_distribution.so \
    --bpf-program T1pyyaTNZsKv2WcRAB8oVnk93mLJw2XzjtVYqCsaHqt $FIXTURES_DIR/jito_tip_payment.so \
    --account-dir $FIXTURES_DIR/accounts \
+   "${tda_account_args[@]}" \
    --ledger $LEDGER_DIR \
    --slots-per-epoch 32 \
    --quiet --reset &
@@ -115,7 +126,9 @@ setup_test_validator() {
 # SETUP LOCAL NET (https://spl.solana.com/stake-pool/quickstart#optional-step-0-setup-a-local-network-for-testing)
 
 echo "Setting up local test validator"
+set +ex
 setup_test_validator
+set -ex
 
 echo "Creating vote accounts, these accounts be added to the stake pool"
 create_vote_accounts "$max_validators" "$validator_file"
@@ -196,7 +209,7 @@ echo "Increasing amount delegated to each validator in stake pool"
 increase_stakes "$stake_pool_pubkey" "$validator_file" "$stake_per_validator"
 
 # Clear the validator vote pubkey file so it doesn't expand and cause errors next run
-echo "" > "$validator_file"
+rm $validator_file
 
 # wait for certain epoch
 echo "waiting for epoch X from validator $VALIDATOR_PID"
