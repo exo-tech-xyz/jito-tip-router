@@ -20,7 +20,8 @@ create_keypair () {
   fi
 }
 
-create_vote_accounts() {
+# Function to create keypairs and serialize accounts
+prepare_keypairs_and_serialize() {
   max_validators=$1
   validator_file=$2
 
@@ -29,13 +30,6 @@ create_vote_accounts() {
     create_keypair "$keys_dir/identity_$number.json"
     create_keypair "$keys_dir/vote_$number.json"
     create_keypair "$keys_dir/withdrawer_$number.json"
-
-    # Create the vote account
-    solana create-vote-account \
-      "$keys_dir/vote_$number.json" \
-      "$keys_dir/identity_$number.json" \
-      "$keys_dir/withdrawer_$number.json" \
-      --commission 1
 
     # Get the public key of the vote account
     vote_pubkey=$(solana-keygen pubkey "$keys_dir/vote_$number.json")
@@ -56,6 +50,27 @@ create_vote_accounts() {
       --bump 1
   done
 }
+
+# # Clear the old validator list file if it exists
+# if test -f "$validator_file"; then
+#   rm "$validator_file"
+# fi
+
+# Function to create vote accounts
+create_vote_accounts() {
+  max_validators=$1
+  validator_file=$2
+
+  for number in $(seq 1 "$max_validators"); do
+    # Create the vote account
+    solana create-vote-account \
+      "$keys_dir/vote_$number.json" \
+      "$keys_dir/identity_$number.json" \
+      "$keys_dir/withdrawer_$number.json" \
+      --commission 1
+  done
+}
+
 
 add_validator_stakes () {
   stake_pool=$1
@@ -81,6 +96,10 @@ increase_stakes () {
   done < "$validator_list"
 }
 
+# Hoist the creation of keypairs and serialization
+echo "Preparing keypairs and serializing accounts"
+prepare_keypairs_and_serialize "$max_validators" "$validator_file"
+
 VALIDATOR_PID=
 setup_test_validator() {
   solana-test-validator \
@@ -99,12 +118,6 @@ setup_test_validator() {
 }
 
 # SETUP LOCAL NET (https://spl.solana.com/stake-pool/quickstart#optional-step-0-setup-a-local-network-for-testing)
-
-echo "Setup keys directory and clear old validator list file if found"
-if test -f "$validator_file"
-then
-  rm "$validator_file"
-fi
 
 echo "Setting up local test validator"
 setup_test_validator
@@ -194,6 +207,6 @@ while true
 do
 current_slot=$(solana slot --url http://localhost:8899)
 echo "current slot $current_slot"
-[[ $current_slot -gt $DESIRED_SLOT ]] && kill $VALIDATOR_PID && exit 0
+# [[ $current_slot -gt $DESIRED_SLOT ]] && kill $VALIDATOR_PID && exit 0
 sleep 5
 done
