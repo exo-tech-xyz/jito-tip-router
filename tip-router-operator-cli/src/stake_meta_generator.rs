@@ -1,7 +1,7 @@
 use {
     crate::{
-        derive_tip_payment_pubkeys,
-        ledger_utils::get_bank_from_ledger, TipDistributionAccountWrapper,
+        derive_tip_payment_pubkeys, ledger_utils::get_bank_from_ledger,
+        TipDistributionAccountWrapper,
     },
     anchor_lang::AccountDeserialize,
     itertools::Itertools,
