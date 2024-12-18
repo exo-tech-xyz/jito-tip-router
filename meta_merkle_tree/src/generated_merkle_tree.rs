@@ -1,11 +1,8 @@
 use std::{fs::File, io::BufReader, path::PathBuf};
 
-use anchor_lang::Id;
 use jito_tip_distribution_sdk::{
-    jito_tip_distribution::{accounts::ClaimStatus, ID as TIP_DISTRIBUTION_ID},
-    CLAIM_STATUS_SEED,
+    jito_tip_distribution::ID as TIP_DISTRIBUTION_ID, CLAIM_STATUS_SEED,
 };
-use jito_tip_payment_sdk::CONFIG_ACCOUNT_SEED;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use solana_program::{
     clock::{Epoch, Slot},
@@ -398,7 +395,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use jito_tip_distribution::merkle_proof;
+    use crate::verify;
 
     use super::*;
 
@@ -445,12 +442,12 @@ mod tests {
         // verify first node
         let node = solana_program::hash::hashv(&[&[0u8], &hashed_nodes[0]]);
         let proof = get_proof(&mk, 0);
-        assert!(merkle_proof::verify(proof, root, node.to_bytes()));
+        assert!(verify::verify(proof, root, node.to_bytes()));
 
         // verify second node
         let node = solana_program::hash::hashv(&[&[0u8], &hashed_nodes[1]]);
         let proof = get_proof(&mk, 1);
-        assert!(merkle_proof::verify(proof, root, node.to_bytes()));
+        assert!(verify::verify(proof, root, node.to_bytes()));
     }
 
     #[test]

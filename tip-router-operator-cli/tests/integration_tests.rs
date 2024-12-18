@@ -6,13 +6,9 @@ use std::{
 use anchor_lang::prelude::AnchorSerialize;
 use jito_tip_distribution_sdk::jito_tip_distribution::ID as TIP_DISTRIBUTION_ID;
 use jito_tip_payment_sdk::jito_tip_payment::ID as TIP_PAYMENT_ID;
-use log::info;
-use meta_merkle_tree::{
-    generated_merkle_tree::{
-        Delegation, GeneratedMerkleTreeCollection, MerkleRootGeneratorError, StakeMeta,
-        StakeMetaCollection, TipDistributionMeta,
-    },
-    meta_merkle_tree::MetaMerkleTree,
+use meta_merkle_tree::generated_merkle_tree::{
+    Delegation, GeneratedMerkleTreeCollection, MerkleRootGeneratorError, StakeMeta,
+    StakeMetaCollection, TipDistributionMeta,
 };
 use solana_program::stake::state::StakeStateV2;
 use solana_program_test::*;

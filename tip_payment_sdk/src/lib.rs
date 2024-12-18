@@ -1,6 +1,5 @@
 use anchor_lang::declare_program;
 
-
 declare_program!(jito_tip_payment);
 
 pub const CONFIG_ACCOUNT_SEED: &[u8] = b"CONFIG_ACCOUNT";
@@ -15,4 +14,5 @@ pub const TIP_ACCOUNT_SEED_7: &[u8] = b"TIP_ACCOUNT_7";
 
 pub const HEADER_SIZE: usize = 8;
 pub const CONFIG_SIZE: usize = HEADER_SIZE + size_of::<jito_tip_payment::accounts::Config>();
-pub const TIP_PAYMENT_ACCOUNT_SIZE: usize = HEADER_SIZE + size_of::<jito_tip_payment::accounts::TipPaymentAccount>();
+pub const TIP_PAYMENT_ACCOUNT_SIZE: usize =
+    HEADER_SIZE + size_of::<jito_tip_payment::accounts::TipPaymentAccount>();
