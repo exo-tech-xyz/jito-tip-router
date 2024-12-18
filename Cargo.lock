@@ -3162,6 +3162,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "jito-tip-payment-sdk"
+version = "0.0.1"
+
+[[package]]
 name = "jito-tip-router-cli"
 version = "0.0.1"
 dependencies = [
