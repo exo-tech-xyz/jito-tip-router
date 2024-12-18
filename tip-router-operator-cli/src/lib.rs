@@ -1,6 +1,6 @@
-pub mod tip_router;
 pub mod ledger_utils;
 pub mod stake_meta_generator;
+pub mod tip_router;
 pub use crate::cli::{Cli, Commands};
 pub mod cli;
 pub use crate::process_epoch::process_epoch;
@@ -10,7 +10,7 @@ use crate::ledger_utils::get_bank_from_ledger;
 use anchor_lang::prelude::*;
 use anchor_lang::prelude::*;
 use jito_tip_distribution_sdk::{TipDistributionAccount, TIP_DISTRIBUTION_SEED};
-use jito_tip_payment::{
+use jito_tip_payment_sdk::{
     CONFIG_ACCOUNT_SEED, TIP_ACCOUNT_SEED_0, TIP_ACCOUNT_SEED_1, TIP_ACCOUNT_SEED_2,
     TIP_ACCOUNT_SEED_3, TIP_ACCOUNT_SEED_4, TIP_ACCOUNT_SEED_5, TIP_ACCOUNT_SEED_6,
     TIP_ACCOUNT_SEED_7,

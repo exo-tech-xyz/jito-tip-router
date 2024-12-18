@@ -6,7 +6,8 @@ use {
     anchor_lang::AccountDeserialize,
     itertools::Itertools,
     jito_tip_distribution_sdk::{derive_tip_distribution_account_address, TipDistributionAccount},
-    jito_tip_payment::{Config, CONFIG_ACCOUNT_SEED},
+    jito_tip_payment_sdk::CONFIG_ACCOUNT_SEED,
+    jito_tip_payment::Config,
     log::*,
     meta_merkle_tree::generated_merkle_tree::{
         Delegation, StakeMeta, StakeMetaCollection, TipDistributionMeta,
@@ -346,10 +347,11 @@ mod tests {
         super::*,
         anchor_lang::AccountSerialize,
         jito_tip_distribution_sdk::TIP_DISTRIBUTION_SIZE,
-        jito_tip_payment::{
-            InitBumps, TipPaymentAccount, CONFIG_ACCOUNT_SEED, TIP_ACCOUNT_SEED_0,
+        jito_tip_payment_sdk::{TIP_ACCOUNT_SEED_0,
             TIP_ACCOUNT_SEED_1, TIP_ACCOUNT_SEED_2, TIP_ACCOUNT_SEED_3, TIP_ACCOUNT_SEED_4,
-            TIP_ACCOUNT_SEED_5, TIP_ACCOUNT_SEED_6, TIP_ACCOUNT_SEED_7,
+            TIP_ACCOUNT_SEED_5, TIP_ACCOUNT_SEED_6, TIP_ACCOUNT_SEED_7,},
+        jito_tip_payment::{
+            InitBumps, TipPaymentAccount,
         },
         solana_runtime::genesis_utils::{
             create_genesis_config_with_vote_accounts, GenesisConfigInfo, ValidatorVoteKeypairs,
