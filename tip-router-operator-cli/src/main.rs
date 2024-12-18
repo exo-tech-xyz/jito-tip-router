@@ -34,27 +34,29 @@ async fn main() -> Result<()> {
                 wait_for_next_epoch(&rpc_client).await?;
 
                 // Get the last slot of the previous epoch
-                let previous_epoch_slot = get_previous_epoch_last_slot(&rpc_client).await?;
+                let (previous_epoch, previous_epoch_slot) =
+                    get_previous_epoch_last_slot(&rpc_client).await?;
                 info!("Processing slot {} for previous epoch", previous_epoch_slot);
 
-                // TODO Process the epoch
-
-                // match process_epoch(
-                //     previous_epoch_slot,
-                //     &cli,
-                //     &keypair,
-                //     tip_distribution_program_id,
-                //     tip_payment_program_id,
-                //     ncn_address,
-                // )
-                // .await
-                // {
-                //     Ok(_) => info!("Successfully processed epoch"),
-                //     Err(e) => {
-                //         error!("Error processing epoch: {}", e);
-                //         // Continue to next epoch even if this one failed
-                //     }
-                // }
+                // Process the epoch
+                match process_epoch(
+                    &rpc_client,
+                    previous_epoch_slot,
+                    previous_epoch,
+                    &keypair,
+                    tip_distribution_program_id,
+                    tip_payment_program_id,
+                    ncn_address,
+                    &cli,
+                )
+                .await
+                {
+                    Ok(_) => info!("Successfully processed epoch"),
+                    Err(e) => {
+                        error!("Error processing epoch: {}", e);
+                        // Continue to next epoch even if this one failed
+                    }
+                }
             }
         }
     }

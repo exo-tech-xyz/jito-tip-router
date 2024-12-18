@@ -9,6 +9,9 @@ pub struct Cli {
     #[arg(short, long)]
     pub keypair_path: String,
 
+    #[arg(short, long)]
+    pub operator_address: String,
+
     #[arg(short, long, default_value = "http://localhost:8899")]
     pub rpc_url: String,
 
