@@ -1,40 +1,27 @@
 use std::{
-    fs::{self, File},
-    io::BufReader,
+    fs,
     path::{Path, PathBuf},
-    sync::Arc,
-    time::Duration,
 };
 
 use anchor_lang::prelude::AnchorSerialize;
-use ellipsis_client::EllipsisClient;
 use jito_tip_distribution_sdk::jito_tip_distribution::ID as TIP_DISTRIBUTION_ID;
 use jito_tip_payment::{self, ID as TIP_PAYMENT_ID};
-use log::info;
-use meta_merkle_tree::{
-    generated_merkle_tree::{
+use meta_merkle_tree::generated_merkle_tree::{
         Delegation, GeneratedMerkleTreeCollection, MerkleRootGeneratorError, StakeMeta,
         StakeMetaCollection, TipDistributionMeta,
-    },
-    meta_merkle_tree::MetaMerkleTree,
-};
-use solana_client::rpc_client::RpcClient;
-use solana_program::stake::state::{StakeState, StakeStateV2};
+    };
+use solana_program::stake::state::StakeStateV2;
 use solana_program_test::*;
-use solana_sdk::bs58;
 use solana_sdk::{
-    account::{Account, AccountSharedData},
-    genesis_config::GenesisConfig,
+    account::AccountSharedData,
     pubkey::Pubkey,
     signature::{Keypair, Signer},
     system_instruction,
     transaction::Transaction,
 };
 use tempfile::TempDir;
-use thiserror::Error;
 use tip_router_operator_cli::{
-    get_merkle_root, ledger_utils::get_bank_from_ledger, process_epoch,
-    stake_meta_generator::generate_stake_meta, Cli, Commands, TipAccountConfig,
+    get_merkle_root, TipAccountConfig,
 };
 struct TestContext {
     pub context: ProgramTestContext,
