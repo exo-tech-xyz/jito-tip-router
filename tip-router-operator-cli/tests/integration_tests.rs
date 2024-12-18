@@ -7,9 +7,9 @@ use anchor_lang::prelude::AnchorSerialize;
 use jito_tip_distribution_sdk::jito_tip_distribution::ID as TIP_DISTRIBUTION_ID;
 use jito_tip_payment::{self, ID as TIP_PAYMENT_ID};
 use meta_merkle_tree::generated_merkle_tree::{
-    Delegation, GeneratedMerkleTreeCollection, MerkleRootGeneratorError, StakeMeta,
-    StakeMetaCollection, TipDistributionMeta,
-};
+        Delegation, GeneratedMerkleTreeCollection, MerkleRootGeneratorError, StakeMeta,
+        StakeMetaCollection, TipDistributionMeta,
+    };
 use solana_program::stake::state::StakeStateV2;
 use solana_program_test::*;
 use solana_sdk::{
@@ -20,7 +20,11 @@ use solana_sdk::{
     transaction::Transaction,
 };
 use tempfile::TempDir;
-use tip_router_operator_cli::{get_merkle_root, TipAccountConfig};
+use tip_router_operator_cli::{
+    get_merkle_root, TipAccountConfig,
+};
+
+#[allow(dead_code)]
 struct TestContext {
     pub context: ProgramTestContext,
     pub tip_distribution_program_id: Pubkey,
@@ -183,12 +187,6 @@ impl TestContext {
         }
     }
 
-    async fn advance_clock(&mut self, slots: u64) -> Result<(), Box<dyn std::error::Error>> {
-        let current_slot = self.context.banks_client.get_root_slot().await?;
-        self.context.warp_to_slot(current_slot + slots)?;
-        self.context.last_blockhash = self.context.banks_client.get_latest_blockhash().await?;
-        Ok(())
-    }
 }
 
 #[tokio::test]
@@ -263,7 +261,7 @@ async fn test_merkle_tree_generation() -> Result<(), Box<dyn std::error::Error>>
 
     let mut test_context = TestContext::new()
         .await
-        .map_err(|e| MerkleRootGeneratorError::MerkleTreeTestError)?;
+        .map_err(|_e| MerkleRootGeneratorError::MerkleTreeTestError)?;
 
     // Get config PDA
     let (config_pda, bump) = Pubkey::find_program_address(&[b"config"], &TIP_DISTRIBUTION_ID);
