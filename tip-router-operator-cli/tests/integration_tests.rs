@@ -9,7 +9,7 @@ use std::{
 use anchor_lang::prelude::AnchorSerialize;
 use ellipsis_client::EllipsisClient;
 use jito_tip_distribution_sdk::jito_tip_distribution::ID as TIP_DISTRIBUTION_ID;
-use jito_tip_payment::ID as TIP_PAYMENT_ID;
+use jito_tip_payment_sdk::jito_tip_payment::ID as TIP_PAYMENT_ID;
 use log::info;
 use meta_merkle_tree::{
     generated_merkle_tree::{

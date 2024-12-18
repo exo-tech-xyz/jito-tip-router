@@ -10,3 +10,4 @@ edition.workspace = true
 readme.workspace = true
 
 [dependencies]
+anchor-lang = { workspace = true }
