@@ -6,7 +6,6 @@ pub mod cli;
 pub use crate::process_epoch::process_epoch;
 pub mod process_epoch;
 
-use crate::ledger_utils::get_bank_from_ledger;
 use anchor_lang::prelude::*;
 use anchor_lang::prelude::*;
 use jito_tip_distribution_sdk::{TipDistributionAccount, TIP_DISTRIBUTION_SEED};
@@ -17,10 +16,9 @@ use jito_tip_payment_sdk::{
 };
 use log::info;
 use meta_merkle_tree::generated_merkle_tree::GeneratedMerkleTreeCollection;
-use meta_merkle_tree::generated_merkle_tree::MerkleRootGeneratorError;
 use meta_merkle_tree::meta_merkle_tree::MetaMerkleTree;
 use solana_sdk::slot_history::Slot;
-use solana_sdk::{account::AccountSharedData, pubkey::Pubkey, stake_history::Epoch};
+use solana_sdk::{account::AccountSharedData, pubkey::Pubkey};
 use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
@@ -31,6 +29,7 @@ pub enum MerkleRootError {
 }
 
 // TODO where did these come from?
+#[allow(dead_code)]
 pub struct TipPaymentPubkeys {
     config_pda: Pubkey,
     tip_pdas: Vec<Pubkey>,
@@ -39,7 +38,7 @@ pub struct TipPaymentPubkeys {
 #[derive(Clone, Debug, AnchorSerialize, AnchorDeserialize)]
 pub struct TipAccountConfig {
     pub authority: Pubkey,
-    pub protocol_fee_bps: u16,
+    pub protocol_fee_bps: u64,
     pub bump: u8,
 }
 

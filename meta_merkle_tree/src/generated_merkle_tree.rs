@@ -6,7 +6,6 @@ use jito_tip_distribution_sdk::{
     CLAIM_STATUS_SEED,
 };
 use jito_tip_payment_sdk::CONFIG_ACCOUNT_SEED;
-use log::info;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use solana_program::{
     clock::{Epoch, Slot},
@@ -60,11 +59,6 @@ impl GeneratedMerkleTreeCollection {
         stake_meta_coll: StakeMetaCollection,
         protocol_fee_bps: u64,
     ) -> Result<Self, MerkleRootGeneratorError> {
-        let (config_pda, _) = Pubkey::find_program_address(
-            &[CONFIG_ACCOUNT_SEED],
-            &stake_meta_coll.tip_distribution_program_id,
-        );
-
         let generated_merkle_trees = stake_meta_coll
             .stake_metas
             .into_iter()
@@ -169,10 +163,6 @@ impl TreeNode {
                 .and_then(|v| v.checked_sub(validator_amount))
                 .ok_or(MerkleRootGeneratorError::CheckedMathError)?;
 
-            info!("Protocol Fee Amount: {}", protocol_fee_amount);
-            info!("Validator Amount: {}", validator_amount);
-            info!("Remaining Total Rewards: {}", remaining_total_rewards);
-
             let (protocol_fee_recipient, _) = Pubkey::find_program_address(
                 &[b"protocol_fee", &(0u64).to_le_bytes()],
                 tip_distribution_program_id,
@@ -232,11 +222,6 @@ impl TreeNode {
                                 .ok_or(MerkleRootGeneratorError::CheckedMathError)?,
                         )
                         .map_err(|_| MerkleRootGeneratorError::CheckedMathError)?;
-
-                        info!(
-                            "Delegation: {}, Amount Delegated: {}, Reward Amount: {}",
-                            delegation.staker_pubkey, amount_delegated, reward_amount
-                        );
 
                         let (claim_status_pubkey, claim_status_bump) = Pubkey::find_program_address(
                             &[
@@ -706,15 +691,6 @@ mod tests {
                         gmt.tip_distribution_account == expected_gmt.tip_distribution_account
                     })
                     .unwrap();
-
-                info!("Expected nodes:");
-                for node in &expected_gmt.tree_nodes {
-                    info!("Claimant: {}, Amount: {}", node.claimant, node.amount);
-                }
-                info!("\nActual nodes:");
-                for node in &actual_gmt.tree_nodes {
-                    info!("Claimant: {}, Amount: {}", node.claimant, node.amount);
-                }
 
                 assert_eq!(expected_gmt.max_num_nodes, actual_gmt.max_num_nodes);
                 assert_eq!(expected_gmt.max_total_claim, actual_gmt.max_total_claim);
