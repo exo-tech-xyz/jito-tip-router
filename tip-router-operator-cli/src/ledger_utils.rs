@@ -11,9 +11,7 @@ use solana_ledger::{
     blockstore_processor::{self, ProcessOptions},
 };
 use solana_runtime::{
-    accounts_background_service::AbsRequestSender,
-    bank::Bank,
-    snapshot_config::SnapshotConfig,
+    accounts_background_service::AbsRequestSender, bank::Bank, snapshot_config::SnapshotConfig,
 };
 use solana_sdk::clock::Slot;
 

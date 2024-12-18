@@ -14,8 +14,7 @@ use {
     solana_accounts_db::hardened_unpack::OpenGenesisConfigError,
     solana_client::client_error::ClientError,
     solana_ledger::{
-        bank_forks_utils::BankForksUtilsError,
-        blockstore::BlockstoreError,
+        bank_forks_utils::BankForksUtilsError, blockstore::BlockstoreError,
         blockstore_processor::BlockstoreProcessorError,
     },
     solana_program::{stake_history::StakeHistory, sysvar},

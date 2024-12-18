@@ -1,16 +1,10 @@
-use std::{
-    str::FromStr,
-    time::Duration,
-};
+use std::{str::FromStr, time::Duration};
 
 use anyhow::Result;
 use ellipsis_client::EllipsisClient;
 use log::info;
 use solana_rpc_client::rpc_client::RpcClient;
-use solana_sdk::{
-    pubkey::Pubkey,
-    signer::keypair::Keypair,
-};
+use solana_sdk::{pubkey::Pubkey, signer::keypair::Keypair};
 
 use crate::{
     get_merkle_root,
