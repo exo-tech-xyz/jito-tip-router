@@ -2,7 +2,6 @@ use std::{fs::File, io::BufReader, path::PathBuf};
 
 use anchor_lang::Id;
 use jito_tip_distribution::{program::JitoTipDistribution, state::ClaimStatus};
-use log::info;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use solana_program::{
     clock::{Epoch, Slot},
