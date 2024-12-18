@@ -7,6 +7,7 @@ use std::{
 };
 
 use anyhow::Result;
+use ellipsis_client::EllipsisClient;
 use log::info;
 use meta_merkle_tree::{
     generated_merkle_tree::GeneratedMerkleTreeCollection, meta_merkle_tree::MetaMerkleTree,
@@ -18,7 +19,7 @@ use solana_sdk::{
     signer::keypair::{read_keypair_file, Keypair},
 };
 
-use crate::{stake_meta_generator, Cli};
+use crate::{stake_meta_generator, tip_router::get_ncn_config, Cli};
 
 pub async fn wait_for_next_epoch(rpc_client: &RpcClient) -> Result<()> {
     let current_epoch = rpc_client.get_epoch_info()?.epoch;
@@ -51,13 +52,30 @@ pub async fn get_previous_epoch_last_slot(rpc_client: &RpcClient) -> Result<u64>
 }
 
 pub async fn process_epoch(
+    client: &EllipsisClient,
     previous_epoch_slot: u64,
-    cli: &Cli,
-    keypair: &Keypair,
+    payer: &Keypair,
     tip_distribution_program_id: &Pubkey,
     tip_payment_program_id: &Pubkey,
     ncn_address: &Pubkey,
 ) -> Result<()> {
+    // TODO Get the protocol fees
+    let ncn_config = get_ncn_config(client, ncn_address).await.unwrap();
+
+    // TODO Generate merkle root from ledger
+    // let meta_merkle_tree = get_merkle_root(
+    //     ledger_path,
+    //     account_paths,
+    //     full_snapshots_path,
+    //     desired_slot,
+    //     tip_distribution_program_id,
+    //     out_path,
+    //     tip_payment_program_id,
+    //     PROTOCOL_FEE_BPS,
+    // )
+    // .unwrap();
+
+    // TODO cast vote using the generated merkle root
     info!("Successfully completed all steps for epoch processing");
     Ok(())
 }
