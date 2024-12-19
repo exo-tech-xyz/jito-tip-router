@@ -3063,7 +3063,6 @@ dependencies = [
  "solana-account-decoder 1.18.26 (git+https://github.com/jito-foundation/jito-solana.git?rev=0bbcbe476c0e728907ac01135115e661c16538e5)",
  "solana-program 1.18.26",
  "solana-rpc-client",
- "solana-rpc-client-api",
  "solana-sdk",
  "spl-associated-token-account",
  "spl-token",

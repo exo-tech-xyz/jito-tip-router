@@ -73,7 +73,6 @@ solana-program = { package = "solana-program", git = "https://github.com/jito-fo
 solana-program-runtime = { package = "solana-program-runtime", git = "https://github.com/jito-foundation/jito-solana.git", rev = "0bbcbe476c0e728907ac01135115e661c16538e5" }
 solana-program-test = { package = "solana-program-test", git = "https://github.com/jito-foundation/jito-solana.git", rev = "0bbcbe476c0e728907ac01135115e661c16538e5" }
 solana-rpc-client = { package = "solana-rpc-client", git = "https://github.com/jito-foundation/jito-solana.git", rev = "0bbcbe476c0e728907ac01135115e661c16538e5" }
-solana-rpc-client-api = { package = "solana-rpc-client-api", git = "https://github.com/jito-foundation/jito-solana.git", rev = "0bbcbe476c0e728907ac01135115e661c16538e5" }
 solana-runtime = { package = "solana-runtime", git = "https://github.com/jito-foundation/jito-solana.git", rev = "0bbcbe476c0e728907ac01135115e661c16538e5" }
 solana-sdk = { package = "solana-sdk", git = "https://github.com/jito-foundation/jito-solana.git", rev = "0bbcbe476c0e728907ac01135115e661c16538e5" }
 solana-stake-program = { package = "solana-stake-program", git = "https://github.com/jito-foundation/jito-solana.git", rev = "0bbcbe476c0e728907ac01135115e661c16538e5" }
@@ -109,6 +108,7 @@ jito-vault-sdk = { git = "https://github.com/jito-foundation/restaking.git", rev
 solana-program = { git = "https://github.com/jito-foundation/jito-solana.git", rev = "0bbcbe476c0e728907ac01135115e661c16538e5" }
 solana-sdk = { git = "https://github.com/jito-foundation/jito-solana.git", rev = "0bbcbe476c0e728907ac01135115e661c16538e5" }
 solana-rpc-client = { git = "https://github.com/jito-foundation/jito-solana.git", rev = "0bbcbe476c0e728907ac01135115e661c16538e5" }
+# necessary for solana thin client
 solana-rpc-client-api = { git = "https://github.com/jito-foundation/jito-solana.git", rev = "0bbcbe476c0e728907ac01135115e661c16538e5" }
 # necessary for ellipsis client
 solana-transaction-status = { git = "https://github.com/jito-foundation/jito-solana.git", rev = "0bbcbe476c0e728907ac01135115e661c16538e5" }
