@@ -5,6 +5,7 @@ use ellipsis_client::EllipsisClient;
 use log::info;
 use solana_rpc_client::rpc_client::RpcClient;
 use solana_sdk::{pubkey::Pubkey, signer::keypair::Keypair};
+use solana_metrics::{datapoint_info, datapoint_error};
 
 use crate::{
     get_merkle_root,
@@ -55,7 +56,9 @@ pub async fn process_epoch(
 ) -> Result<()> {
     info!("Processing epoch {:?}", previous_epoch);
 
-    // TODO maybe better to pass these as args rather than the cli_args reference?
+    // Emit a datapoint for starting the epoch processing
+    datapoint_info!("process_epoch_start", ("epoch", previous_epoch, i64));
+
     let ledger_path = cli_args.ledger_path.clone();
     let account_paths = cli_args.account_paths.clone();
     let full_snapshots_path = cli_args.full_snapshots_path.clone();
@@ -76,8 +79,9 @@ pub async fn process_epoch(
         Some(path) => path,
         None => ledger_path,
     };
+
     // Generate merkle root from ledger
-    let meta_merkle_tree = get_merkle_root(
+    let meta_merkle_tree = match get_merkle_root(
         cli_args.ledger_path.as_path(),
         account_paths,
         full_snapshots_path,
@@ -86,24 +90,38 @@ pub async fn process_epoch(
         "", // TODO out_path is not used, unsure what should be put here. Maybe `snapshot_output_dir` from cli args?
         tip_payment_program_id,
         fees,
-    )
-    .unwrap();
+    ) {
+        Ok(tree) => {
+            datapoint_info!("merkle_root_generated", ("epoch", previous_epoch, i64));
+            tree
+        }
+        Err(e) => {
+            datapoint_error!("merkle_root_error", ("epoch", previous_epoch, i64), ("error", format!("{:?}", e), String));
+            return Err(e);
+        }
+    };
 
-    // cast vote using the generated merkle root
-    let tx_sig = cast_vote(
+    // Cast vote using the generated merkle root
+    let tx_sig = match cast_vote(
         client,
         payer,
         *ncn_address,
         operator,
         payer,
         meta_merkle_tree.merkle_root,
-        // TODO determine if this is current or prev epoch. Where prev epoch
-        // is the epoch in which StakeMetaCollection was created (i.e. epoch
-        // corresponding to the previous_epoch_slot).
         previous_epoch,
     )
     .await
-    .unwrap();
+    {
+        Ok(sig) => {
+            datapoint_info!("vote_cast_success", ("epoch", previous_epoch, i64), ("tx_sig", format!("{:?}", sig), String));
+            sig
+        }
+        Err(e) => {
+            datapoint_error!("vote_cast_error", ("epoch", previous_epoch, i64), ("error", format!("{:?}", e), String));
+            return Err(e);
+        }
+    };
 
     info!("Successfully cast vote at tx {:?}", tx_sig);
 
