@@ -101,7 +101,7 @@ pub async fn process_epoch(
                 ("epoch", previous_epoch, i64),
                 ("error", format!("{:?}", e), String)
             );
-            return Err(e);
+            return Err(anyhow::anyhow!("Failed to generate merkle root: {:?}", e));  // Use debug formatting
         }
     };
 
@@ -131,7 +131,7 @@ pub async fn process_epoch(
                 ("epoch", previous_epoch, i64),
                 ("error", format!("{:?}", e), String)
             );
-            return Err(e);
+            return Err(anyhow::anyhow!("Failed to cast vote: {}", e));  // Convert the error
         }
     };
 
