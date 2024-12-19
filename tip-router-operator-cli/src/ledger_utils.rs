@@ -19,7 +19,6 @@ use solana_runtime::{
 use solana_sdk::clock::Slot;
 
 // TODO: Use Result and propagate errors more gracefully
-// TODO: Handle CLI flag to write snapshot to disk at desired slot
 /// Create the Bank for a desired slot for given file paths.
 pub fn get_bank_from_ledger(
     ledger_path: &Path,
