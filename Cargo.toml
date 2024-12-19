@@ -67,7 +67,6 @@ solana-genesis-utils = { package = "solana-genesis-utils", git = "https://github
 solana-ledger = { package = "solana-ledger", git = "https://github.com/jito-foundation/jito-solana.git", rev = "0bbcbe476c0e728907ac01135115e661c16538e5" }
 solana-ledger-tool = { package = "solana-ledger-tool", git = "https://github.com/jito-foundation/jito-solana.git", rev = "0bbcbe476c0e728907ac01135115e661c16538e5" }
 solana-measure = { package = "solana-measure", git = "https://github.com/jito-foundation/jito-solana.git", rev = "0bbcbe476c0e728907ac01135115e661c16538e5" }
-solana-merkle-tree = { package = "solana-merkle-tree", git = "https://github.com/jito-foundation/jito-solana.git", rev = "0bbcbe476c0e728907ac01135115e661c16538e5" }
 solana-program = { package = "solana-program", git = "https://github.com/jito-foundation/jito-solana.git", rev = "0bbcbe476c0e728907ac01135115e661c16538e5" }
 solana-program-test = { package = "solana-program-test", git = "https://github.com/jito-foundation/jito-solana.git", rev = "0bbcbe476c0e728907ac01135115e661c16538e5" }
 solana-rpc-client = { package = "solana-rpc-client", git = "https://github.com/jito-foundation/jito-solana.git", rev = "0bbcbe476c0e728907ac01135115e661c16538e5" }
