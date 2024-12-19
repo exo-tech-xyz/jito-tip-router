@@ -3,9 +3,9 @@ use std::{str::FromStr, time::Duration};
 use anyhow::Result;
 use ellipsis_client::EllipsisClient;
 use log::info;
+use solana_metrics::{datapoint_error, datapoint_info};
 use solana_rpc_client::rpc_client::RpcClient;
 use solana_sdk::{pubkey::Pubkey, signer::keypair::Keypair};
-use solana_metrics::{datapoint_info, datapoint_error};
 
 use crate::{
     get_merkle_root,
@@ -96,7 +96,11 @@ pub async fn process_epoch(
             tree
         }
         Err(e) => {
-            datapoint_error!("merkle_root_error", ("epoch", previous_epoch, i64), ("error", format!("{:?}", e), String));
+            datapoint_error!(
+                "merkle_root_error",
+                ("epoch", previous_epoch, i64),
+                ("error", format!("{:?}", e), String)
+            );
             return Err(e);
         }
     };
@@ -114,11 +118,19 @@ pub async fn process_epoch(
     .await
     {
         Ok(sig) => {
-            datapoint_info!("vote_cast_success", ("epoch", previous_epoch, i64), ("tx_sig", format!("{:?}", sig), String));
+            datapoint_info!(
+                "vote_cast_success",
+                ("epoch", previous_epoch, i64),
+                ("tx_sig", format!("{:?}", sig), String)
+            );
             sig
         }
         Err(e) => {
-            datapoint_error!("vote_cast_error", ("epoch", previous_epoch, i64), ("error", format!("{:?}", e), String));
+            datapoint_error!(
+                "vote_cast_error",
+                ("epoch", previous_epoch, i64),
+                ("error", format!("{:?}", e), String)
+            );
             return Err(e);
         }
     };
