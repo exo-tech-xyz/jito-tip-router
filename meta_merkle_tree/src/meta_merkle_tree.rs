@@ -385,18 +385,20 @@ mod tests {
             "Should have two validator nodes"
         );
 
-        // Validate each node matches its source generated tree
-        for (node, generated_tree) in meta_merkle_tree
-            .tree_nodes
-            .iter()
-            .zip(generated_collection.generated_merkle_trees.iter())
-        {
+        // Validate each node matches a source generated tree (order may differ due to merkle
+        //  tree sorting by hash)
+        for node in meta_merkle_tree.tree_nodes.iter() {
+            let matched_tree = generated_collection
+                .generated_merkle_trees
+                .iter()
+                .find(|x| x.tip_distribution_account == node.tip_distribution_account)
+                .unwrap();
             assert_eq!(
                 node.tip_distribution_account,
-                generated_tree.tip_distribution_account
+                matched_tree.tip_distribution_account
             );
-            assert_eq!(node.max_total_claim, generated_tree.max_total_claim);
-            assert_eq!(node.max_num_nodes, generated_tree.max_num_nodes);
+            assert_eq!(node.max_total_claim, matched_tree.max_total_claim);
+            assert_eq!(node.max_num_nodes, matched_tree.max_num_nodes);
             assert!(node.proof.is_some(), "Node should have a proof");
         }
 
