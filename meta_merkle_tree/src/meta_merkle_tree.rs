@@ -274,14 +274,27 @@ mod tests {
 
         // Sort by hash
         tree_nodes.sort_by_key(|node| node.hash());
+        let original_tree_nodes = tree_nodes.clone();
 
         let tree = MetaMerkleTree::new(tree_nodes).unwrap();
 
         assert_eq!(tree.tree_nodes.len(), 3);
-        assert_eq!(tree.tree_nodes[0].max_total_claim, 10);
-        assert_eq!(tree.tree_nodes[0].max_num_nodes, 20);
-        assert_eq!(tree.tree_nodes[0].validator_merkle_root, [0; 32]);
-        assert_eq!(tree.tree_nodes[0].tip_distribution_account, pubkey1);
+        assert_eq!(
+            tree.tree_nodes[0].max_total_claim,
+            original_tree_nodes[0].max_total_claim
+        );
+        assert_eq!(
+            tree.tree_nodes[0].max_num_nodes,
+            original_tree_nodes[0].max_num_nodes
+        );
+        assert_eq!(
+            tree.tree_nodes[0].validator_merkle_root,
+            original_tree_nodes[0].validator_merkle_root
+        );
+        assert_eq!(
+            tree.tree_nodes[0].tip_distribution_account,
+            original_tree_nodes[0].tip_distribution_account
+        );
         assert!(tree.tree_nodes[0].proof.is_some());
     }
 
