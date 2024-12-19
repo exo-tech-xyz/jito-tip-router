@@ -77,7 +77,6 @@ solana-rpc-client-api = { package = "solana-rpc-client-api", git = "https://gith
 solana-runtime = { package = "solana-runtime", git = "https://github.com/jito-foundation/jito-solana.git", rev = "0bbcbe476c0e728907ac01135115e661c16538e5" }
 solana-sdk = { package = "solana-sdk", git = "https://github.com/jito-foundation/jito-solana.git", rev = "0bbcbe476c0e728907ac01135115e661c16538e5" }
 solana-stake-program = { package = "solana-stake-program", git = "https://github.com/jito-foundation/jito-solana.git", rev = "0bbcbe476c0e728907ac01135115e661c16538e5" }
-solana-transaction-status = { package = "solana-transaction-status", git = "https://github.com/jito-foundation/jito-solana.git", rev = "0bbcbe476c0e728907ac01135115e661c16538e5" }
 solana-vote = { package = "solana-vote", git = "https://github.com/jito-foundation/jito-solana.git", rev = "0bbcbe476c0e728907ac01135115e661c16538e5" }
 solana-security-txt = "1.1.1"
 spl-associated-token-account = { version = "2.3.0", features = ["no-entrypoint"] }
@@ -111,4 +110,5 @@ solana-program = { git = "https://github.com/jito-foundation/jito-solana.git", r
 solana-sdk = { git = "https://github.com/jito-foundation/jito-solana.git", rev = "0bbcbe476c0e728907ac01135115e661c16538e5" }
 solana-rpc-client = { git = "https://github.com/jito-foundation/jito-solana.git", rev = "0bbcbe476c0e728907ac01135115e661c16538e5" }
 solana-rpc-client-api = { git = "https://github.com/jito-foundation/jito-solana.git", rev = "0bbcbe476c0e728907ac01135115e661c16538e5" }
+# necessary for ellipsis client
 solana-transaction-status = { git = "https://github.com/jito-foundation/jito-solana.git", rev = "0bbcbe476c0e728907ac01135115e661c16538e5" }
