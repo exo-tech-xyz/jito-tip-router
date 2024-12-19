@@ -1,4 +1,7 @@
-use std::{str::FromStr, time::Duration};
+use std::{
+    str::FromStr,
+    time::{Duration, Instant},
+};
 
 use anyhow::Result;
 use ellipsis_client::EllipsisClient;
@@ -56,8 +59,7 @@ pub async fn process_epoch(
 ) -> Result<()> {
     info!("Processing epoch {:?}", previous_epoch);
 
-    // Emit a datapoint for starting the epoch processing
-    datapoint_info!("process_epoch_start", ("epoch", previous_epoch, i64));
+    let start = Instant::now();
 
     let ledger_path = cli_args.ledger_path.clone();
     let account_paths = cli_args.account_paths.clone();
@@ -92,16 +94,19 @@ pub async fn process_epoch(
         fees,
     ) {
         Ok(tree) => {
-            datapoint_info!("merkle_root_generated", ("epoch", previous_epoch, i64));
+            datapoint_info!(
+                "tip_router_cli-merkle_root_generated",
+                ("epoch", previous_epoch, i64)
+            );
             tree
         }
         Err(e) => {
             datapoint_error!(
-                "merkle_root_error",
+                "tip_router_cli-merkle_root_error",
                 ("epoch", previous_epoch, i64),
                 ("error", format!("{:?}", e), String)
             );
-            return Err(anyhow::anyhow!("Failed to generate merkle root: {:?}", e));  // Use debug formatting
+            return Err(anyhow::anyhow!("Failed to generate merkle root: {:?}", e));
         }
     };
 
@@ -119,7 +124,7 @@ pub async fn process_epoch(
     {
         Ok(sig) => {
             datapoint_info!(
-                "vote_cast_success",
+                "tip_router_cli-vote_cast_success",
                 ("epoch", previous_epoch, i64),
                 ("tx_sig", format!("{:?}", sig), String)
             );
@@ -127,15 +132,25 @@ pub async fn process_epoch(
         }
         Err(e) => {
             datapoint_error!(
-                "vote_cast_error",
+                "tip_router_cli-vote_cast_error",
                 ("epoch", previous_epoch, i64),
                 ("error", format!("{:?}", e), String)
             );
-            return Err(anyhow::anyhow!("Failed to cast vote: {}", e));  // Convert the error
+            return Err(anyhow::anyhow!("Failed to cast vote: {}", e)); // Convert the error
         }
     };
 
     info!("Successfully cast vote at tx {:?}", tx_sig);
+
+    let elapsed_us = start.elapsed().as_micros();
+    // Emit a datapoint for starting the epoch processing
+    datapoint_info!(
+        "tip_router_cli-process_epoch",
+        ("epoch", previous_epoch, i64),
+        ("elapsed_us", elapsed_us, i64),
+    );
+
+    solana_metrics::flush();
 
     Ok(())
 }
