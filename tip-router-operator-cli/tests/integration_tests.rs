@@ -20,7 +20,7 @@ use solana_sdk::{
     transaction::Transaction,
 };
 use tempfile::TempDir;
-use tip_router_operator_cli::{get_merkle_root, TipAccountConfig};
+use tip_router_operator_cli::{get_meta_merkle_root, TipAccountConfig};
 
 #[allow(dead_code)]
 struct TestContext {
@@ -202,7 +202,7 @@ async fn test_up_to_cast_vote() {
     const PROTOCOL_FEE_BPS: u64 = 300;
 
     // 2. Call the function
-    let meta_merkle_tree = get_merkle_root(
+    let meta_merkle_tree = get_meta_merkle_root(
         ledger_path,
         account_paths,
         full_snapshots_path,

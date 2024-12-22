@@ -11,7 +11,7 @@ use solana_rpc_client::rpc_client::RpcClient;
 use solana_sdk::{pubkey::Pubkey, signer::keypair::Keypair};
 
 use crate::{
-    get_merkle_root,
+    get_meta_merkle_root,
     tip_router::{cast_vote, get_ncn_config},
     Cli,
 };
@@ -81,7 +81,7 @@ pub async fn process_epoch(
     };
 
     // Generate merkle root from ledger
-    let meta_merkle_tree = match get_merkle_root(
+    let meta_merkle_tree = match get_meta_merkle_root(
         cli_args.ledger_path.as_path(),
         account_paths,
         full_snapshots_path,
