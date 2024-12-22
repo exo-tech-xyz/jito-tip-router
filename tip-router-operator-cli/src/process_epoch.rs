@@ -5,13 +5,13 @@ use std::{
 
 use anyhow::Result;
 use ellipsis_client::EllipsisClient;
+use generated_merkle_tree::get_meta_merkle_root;
 use log::info;
 use solana_metrics::{datapoint_error, datapoint_info};
 use solana_rpc_client::rpc_client::RpcClient;
 use solana_sdk::{pubkey::Pubkey, signer::keypair::Keypair};
 
 use crate::{
-    get_meta_merkle_root,
     tip_router::{cast_vote, get_ncn_config},
     Cli,
 };

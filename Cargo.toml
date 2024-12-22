@@ -3,6 +3,7 @@ members = [
     "cli",
     "clients/rust/jito_tip_router",
     "core",
+    "generated_merkle_tree",
     "integration_tests",
     "program",
     "shank_cli",
@@ -81,6 +82,7 @@ switchboard-on-demand = "0.1.0"
 syn = "2.0.72"
 thiserror = "1.0.57"
 tokio = { version = "1.36.0", features = ["full"] }
+generated-merkle-tree = { path = "./generated_merkle_tree", version = "=0.0.1" }
 meta-merkle-tree = { path = "./meta_merkle_tree", version = "=0.0.1" }
 jito-tip-distribution-sdk = { path = "./tip_distribution_sdk", version = "=0.0.1" }
 jito-tip-payment-sdk = { path = "./tip_payment_sdk", version = "=0.0.1" }

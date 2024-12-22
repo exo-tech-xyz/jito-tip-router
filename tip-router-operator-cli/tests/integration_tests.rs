@@ -4,6 +4,7 @@ use std::{
 };
 
 use anchor_lang::prelude::AnchorSerialize;
+use generated_merkle_tree::{get_meta_merkle_root, TipAccountConfig};
 use jito_tip_distribution_sdk::jito_tip_distribution::ID as TIP_DISTRIBUTION_ID;
 use jito_tip_payment_sdk::jito_tip_payment::ID as TIP_PAYMENT_ID;
 use meta_merkle_tree::generated_merkle_tree::{
@@ -20,7 +21,6 @@ use solana_sdk::{
     transaction::Transaction,
 };
 use tempfile::TempDir;
-use tip_router_operator_cli::{get_meta_merkle_root, TipAccountConfig};
 
 #[allow(dead_code)]
 struct TestContext {
