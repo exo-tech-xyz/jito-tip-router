@@ -172,7 +172,7 @@ impl TreeNode {
                         &protocol_fee_recipient.to_bytes(),
                         &tip_distribution_meta.tip_distribution_pubkey.to_bytes(),
                     ],
-                    &TIP_DISTRIBUTION_ID,
+                    tip_distribution_program_id,
                 );
 
             let mut tree_nodes = vec![TreeNode {
@@ -192,7 +192,7 @@ impl TreeNode {
                         &stake_meta.validator_node_pubkey.to_bytes(),
                         &tip_distribution_meta.tip_distribution_pubkey.to_bytes(),
                     ],
-                    &TIP_DISTRIBUTION_ID,
+                    tip_distribution_program_id,
                 );
 
             tree_nodes.push(TreeNode {

@@ -211,6 +211,7 @@ async fn test_up_to_cast_vote() {
         out_path,
         tip_payment_program_id,
         PROTOCOL_FEE_BPS,
+        false,
     )
     .unwrap();
 
