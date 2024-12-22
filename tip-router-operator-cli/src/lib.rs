@@ -74,6 +74,8 @@ pub fn get_meta_merkle_root(
     tip_distribution_program_id: &Pubkey,
     out_path: &str,
     tip_payment_program_id: &Pubkey,
+    ncn_address: &Pubkey,
+    epoch: u64,
     protocol_fee_bps: u64,
     snapshots_enabled: bool,
 ) -> std::result::Result<MetaMerkleTree, MerkleRootError> {
@@ -93,6 +95,8 @@ pub fn get_meta_merkle_root(
     // Generate merkle tree collection
     let merkle_tree_coll = GeneratedMerkleTreeCollection::new_from_stake_meta_collection(
         stake_meta_collection,
+        ncn_address,
+        epoch,
         protocol_fee_bps,
     )
     .map_err(|_| {

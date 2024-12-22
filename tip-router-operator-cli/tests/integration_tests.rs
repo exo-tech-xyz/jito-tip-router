@@ -199,6 +199,8 @@ async fn test_up_to_cast_vote() {
     let tip_distribution_program_id = &TIP_DISTRIBUTION_ID;
     let out_path = "tests/fixtures/output.json";
     let tip_payment_program_id = &TIP_PAYMENT_ID;
+    let ncn_address = Pubkey::new_unique();
+    let epoch = 0u64;
     const PROTOCOL_FEE_BPS: u64 = 300;
 
     // 2. Call the function
@@ -210,6 +212,8 @@ async fn test_up_to_cast_vote() {
         tip_distribution_program_id,
         out_path,
         tip_payment_program_id,
+        &ncn_address,
+        epoch,
         PROTOCOL_FEE_BPS,
         false,
     )
@@ -256,6 +260,8 @@ async fn test_merkle_tree_generation() -> Result<(), Box<dyn std::error::Error>>
     const PROTOCOL_FEE_BPS: u64 = 300;
     const VALIDATOR_FEE_BPS: u16 = 1000;
     const TOTAL_TIPS: u64 = 1_000_000;
+    let ncn_address = Pubkey::new_unique();
+    let epoch = 0u64;
 
     let mut test_context = TestContext::new()
         .await
@@ -299,6 +305,8 @@ async fn test_merkle_tree_generation() -> Result<(), Box<dyn std::error::Error>>
     // Then use it in generate_merkle_root
     let merkle_tree_coll = GeneratedMerkleTreeCollection::new_from_stake_meta_collection(
         stake_meta_collection.clone(),
+        &ncn_address,
+        epoch,
         PROTOCOL_FEE_BPS,
     )?;
 
@@ -313,7 +321,11 @@ async fn test_merkle_tree_generation() -> Result<(), Box<dyn std::error::Error>>
 
     // Get the protocol fee recipient PDA - use the same derivation as in the implementation
     let (protocol_fee_recipient, _) = Pubkey::find_program_address(
-        &[b"protocol_fee", &(0u64).to_le_bytes()],
+        &[
+            b"base_reward_receiver",
+            &ncn_address.to_bytes(),
+            &epoch.to_le_bytes(),
+        ],
         &TIP_DISTRIBUTION_ID,
     );
 
