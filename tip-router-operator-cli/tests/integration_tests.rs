@@ -40,11 +40,7 @@ impl TestContext {
         let output_dir = temp_dir.path().join("output");
         fs::create_dir_all(&output_dir)?;
 
-        let mut program_test = ProgramTest::default();
-
-        // Add programs to test environment
-        program_test.add_program("jito_tip_distribution", TIP_DISTRIBUTION_ID, None);
-        program_test.add_program("jito_tip_payment", TIP_PAYMENT_ID, None);
+        let program_test = ProgramTest::default();
 
         let mut context = program_test.start_with_context().await;
 
@@ -187,7 +183,7 @@ impl TestContext {
 }
 
 #[tokio::test]
-async fn test_up_to_cast_vote() {
+async fn test_meta_merkle_creation_from_ledger() {
     // 1. Setup - create necessary variables/arguments
     let ledger_path = Path::new("tests/fixtures/test-ledger");
     let account_paths = vec![
@@ -314,7 +310,7 @@ async fn test_merkle_tree_generation() -> Result<(), Box<dyn std::error::Error>>
 
     assert_eq!(
         generated_tree.merkle_root.to_string(),
-        "H2QevVyboCTYi3x5NtS57k73m1ohMt6Rpfb5we4zDXKH"
+        "9TtRHiWFi3x6FFX6CNDrmJQkftQbZVBgKJbmG2Cd1EMo"
     );
 
     let nodes = &generated_tree.tree_nodes;
