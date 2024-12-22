@@ -11,7 +11,8 @@ use solana_program::{
 };
 use thiserror::Error;
 
-use crate::{merkle_tree::MerkleTree, utils::get_proof};
+// TODO these need to be copy pasta'd over?
+// use crate::{merkle_tree::MerkleTree, utils::get_proof};
 
 #[derive(Error, Debug)]
 pub enum MerkleRootGeneratorError {

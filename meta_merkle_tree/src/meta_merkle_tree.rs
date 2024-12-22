@@ -12,7 +12,6 @@ use solana_program::{hash::hashv, pubkey::Pubkey};
 
 use crate::{
     error::MerkleTreeError::{self, MerkleValidationError},
-    generated_merkle_tree::GeneratedMerkleTreeCollection,
     merkle_tree::MerkleTree,
     tree_node::TreeNode,
     utils::get_proof,

@@ -1,16 +1,12 @@
 use {
     crate::{
-        derive_tip_payment_pubkeys, ledger_utils::get_bank_from_ledger,
-        TipDistributionAccountWrapper,
+        derive_tip_payment_pubkeys, generated_merkle_tree::{Delegation, StakeMeta, StakeMetaCollection, TipDistributionMeta}, ledger_utils::get_bank_from_ledger, TipDistributionAccountWrapper
     },
     anchor_lang::AccountDeserialize,
     itertools::Itertools,
     jito_tip_distribution_sdk::{derive_tip_distribution_account_address, TipDistributionAccount},
     jito_tip_payment_sdk::{jito_tip_payment::accounts::Config, CONFIG_ACCOUNT_SEED},
     log::*,
-    meta_merkle_tree::generated_merkle_tree::{
-        Delegation, StakeMeta, StakeMetaCollection, TipDistributionMeta,
-    },
     solana_accounts_db::hardened_unpack::OpenGenesisConfigError,
     solana_client::client_error::ClientError,
     solana_ledger::{
