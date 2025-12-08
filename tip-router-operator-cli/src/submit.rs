@@ -1,12 +1,8 @@
-use std::sync::Arc;
-use std::{path::PathBuf, str::FromStr};
-
-use anchor_lang::AccountDeserialize;
 use jito_bytemuck::AccountDeserialize as JitoAccountDeserialize;
 use jito_priority_fee_distribution_sdk::PriorityFeeDistributionAccount;
 use jito_tip_distribution_sdk::TipDistributionAccount;
 use jito_tip_router_core::{ballot_box::BallotBox, config::Config};
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use meta_merkle_tree::meta_merkle_tree::MetaMerkleTree;
 use solana_account_decoder::UiAccountEncoding;
 use solana_client::nonblocking::rpc_client::RpcClient as AsyncRpcClient;
@@ -16,9 +12,11 @@ use solana_client::{
 };
 use solana_metrics::{datapoint_error, datapoint_info};
 use solana_sdk::{pubkey::Pubkey, signature::Keypair};
+use std::sync::Arc;
+use std::{path::PathBuf, str::FromStr};
 
 use crate::tip_router::send_set_merkle_root_txs;
-use crate::{meta_merkle_tree_file_name, Version};
+use crate::{get_epoch_percentage, meta_merkle_tree_file_name, Version};
 use crate::{
     tip_router::{
         cast_vote, get_ncn_config, set_merkle_root_instructions,
@@ -261,19 +259,29 @@ pub async fn submit_to_ncn(
             Ok(res) => {
                 let num_success = res.iter().filter(|r| r.is_ok()).count();
                 let num_failed = res.iter().filter(|r| r.is_err()).count();
-
-                datapoint_info!(
-                    "tip_router_cli.set_merkle_root",
-                    ("operator_address", operator_address.to_string(), String),
-                    ("epoch", tip_router_target_epoch, i64),
-                    ("num_success", num_success, i64),
-                    ("num_failed", num_failed, i64),
-                    "cluster" => cluster,
-                );
-                info!(
-                    "Set merkle root for {} tip distribution accounts, failed for {}",
-                    num_success, num_failed
-                );
+                match get_epoch_percentage(client).await {
+                    Ok(epoch_percentage) => {
+                        datapoint_info!(
+                            "tip_router_cli.set_merkle_root",
+                            ("operator_address", operator_address.to_string(), String),
+                            ("epoch", tip_router_target_epoch, i64),
+                            ("num_success", num_success, i64),
+                            ("num_failed", num_failed, i64),
+                            ("epoch_percentage", epoch_percentage, f64),
+                            "cluster" => cluster,
+                        );
+                        info!(
+                            "Set merkle root for {} tip distribution accounts, failed for {}",
+                            num_success, num_failed
+                        );
+                    }
+                    Err(e) => {
+                        warn!(
+                            "Failed to fetch epoch percentage for set merkle root: {:?}",
+                            e
+                        );
+                    }
+                }
             }
             Err(e) => {
                 datapoint_error!(
@@ -331,8 +339,7 @@ async fn get_tip_distribution_accounts_to_upload(
     let tip_distribution_accounts = tip_distribution_accounts
         .into_iter()
         .filter_map(|(pubkey, account)| {
-            let tip_distribution_account =
-                TipDistributionAccount::try_deserialize(&mut account.data.as_slice());
+            let tip_distribution_account = TipDistributionAccount::deserialize(&account.data[8..]);
             tip_distribution_account.map_or(None, |tip_distribution_account| {
                 if tip_distribution_account.epoch_created_at == epoch
                     && tip_distribution_account.merkle_root_upload_authority
@@ -340,6 +347,7 @@ async fn get_tip_distribution_accounts_to_upload(
                 {
                     Some((pubkey, tip_distribution_account))
                 } else {
+                    warn!("Tip distribution account likely ");
                     None
                 }
             })
@@ -389,7 +397,7 @@ async fn get_priority_fee_distribution_accounts_to_upload(
         .into_iter()
         .filter_map(|(pubkey, account)| {
             let tip_distribution_account =
-                PriorityFeeDistributionAccount::try_deserialize(&mut account.data.as_slice());
+                PriorityFeeDistributionAccount::deserialize(&account.data);
             tip_distribution_account.map_or(None, |tip_distribution_account| {
                 if tip_distribution_account.epoch_created_at == epoch
                     && tip_distribution_account.merkle_root_upload_authority

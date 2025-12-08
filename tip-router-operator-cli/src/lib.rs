@@ -1,3 +1,4 @@
+#![allow(clippy::cognitive_complexity)]
 #![allow(clippy::arithmetic_side_effects)]
 pub mod ledger_utils;
 pub mod stake_meta_generator;
@@ -12,6 +13,7 @@ pub mod load_and_process_ledger;
 pub mod priority_fees;
 pub mod process_epoch;
 pub mod reclaim;
+pub mod restaking;
 pub mod rpc_utils;
 pub mod solana_cli;
 pub mod submit;
@@ -24,7 +26,8 @@ use std::process::Command;
 use std::sync::Arc;
 use std::time::Instant;
 
-use anchor_lang::prelude::*;
+use anyhow::Result;
+use borsh::BorshSerialize;
 use cli::SnapshotPaths;
 use jito_tip_payment_sdk::{
     CONFIG_ACCOUNT_SEED, TIP_ACCOUNT_SEED_0, TIP_ACCOUNT_SEED_1, TIP_ACCOUNT_SEED_2,
@@ -37,8 +40,10 @@ use meta_merkle_tree::generated_merkle_tree::StakeMetaCollection;
 use meta_merkle_tree::{
     generated_merkle_tree::GeneratedMerkleTreeCollection, meta_merkle_tree::MetaMerkleTree,
 };
+use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_metrics::{datapoint_error, datapoint_info};
 use solana_runtime::bank::Bank;
+use solana_sdk::clock::DEFAULT_SLOTS_PER_EPOCH;
 use solana_sdk::pubkey::Pubkey;
 use stake_meta_generator::generate_stake_meta_collection;
 
@@ -442,7 +447,7 @@ pub struct TipPaymentPubkeys {
     tip_pdas: Vec<Pubkey>,
 }
 
-#[derive(Clone, Debug, AnchorSerialize, AnchorDeserialize)]
+#[derive(BorshSerialize, Clone, Debug, Default)]
 pub struct TipAccountConfig {
     pub authority: Pubkey,
     pub protocol_fee_bps: u64,
@@ -628,4 +633,11 @@ pub fn cleanup_tmp_files(snapshot_output_dir: &Path) -> std::result::Result<(), 
     }
 
     Ok(())
+}
+
+pub async fn get_epoch_percentage(client: &RpcClient) -> anyhow::Result<f64> {
+    let current_slot = client.get_slot().await? as f64;
+    let epoch_percentage =
+        (current_slot % DEFAULT_SLOTS_PER_EPOCH as f64) / DEFAULT_SLOTS_PER_EPOCH as f64;
+    Ok(epoch_percentage)
 }
