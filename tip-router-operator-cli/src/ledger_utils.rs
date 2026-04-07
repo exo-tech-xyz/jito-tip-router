@@ -384,6 +384,10 @@ pub fn get_bank_from_ledger(
     exit.store(true, Ordering::Relaxed);
 
     if save_snapshot {
+        // Finalize the bank: freeze it, mark the chain as rooted, and merge parent account stores.
+        working_bank.squash();
+        // Flush in-memory account cache to disk so the snapshot serializer can read all accounts.
+        working_bank.force_flush_accounts_cache();
         let full_snapshot_archive_info = match snapshot_bank_utils::bank_to_full_snapshot_archive(
             ledger_path,
             &working_bank,
